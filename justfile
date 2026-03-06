@@ -22,9 +22,9 @@ install:
 login:
     aws sso login --profile eagle
 
-# Open the app in the default browser (API key bypass)
+# Open the app in the default browser (DEV_AUTO_AUTH signs in automatically)
 open:
-    start http://localhost:3000/?apiKey=test-integration-api-key
+    start http://localhost:3000
 
 # Validate chat with agent-browser: asks the FAC 2025-06 threshold question
 # Expected: SAT=$350,000, MPT=$15,000
@@ -33,8 +33,8 @@ validate-chat:
     set -e
     export AGENT_BROWSER_NO_WSL=1
 
-    echo "Opening app with API key bypass..."
-    agent-browser navigate "http://localhost:3000/?apiKey=test-integration-api-key"
+    echo "Opening app..."
+    agent-browser navigate "http://localhost:3000"
 
     echo "Accepting privacy notice..."
     sleep 2

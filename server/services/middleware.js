@@ -168,6 +168,19 @@ export function requireRole(requiredRole) {
       const apiKey = req.headers["x-api-key"];
       const id = req.session?.user?.id;
 
+      // Dev auto-auth: sign in as admin when no credentials provided
+      if (!apiKey && !id && process.env.DEV_AUTO_AUTH === "true") {
+        const devUser = await db.query.User.findFirst({
+          where: eq(User.apiKey, process.env.TEST_API_KEY),
+          with: { Role: true },
+        });
+        if (devUser) {
+          req.session ||= {};
+          req.session.user = devUser;
+          return next();
+        }
+      }
+
       // Soft auth: no credentials → skip silently
       if (!apiKey && !id) {
         return requiredRole ? res.status(401).json({ error: "Authentication required" }) : next();
