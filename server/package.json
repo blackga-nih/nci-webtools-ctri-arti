@@ -4,8 +4,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node --env-file .env server.js",
-    "start:dev": "node --env-file .env --watch-path=. server.js",
+    "start": "node --env-file .env --import=./polyfills.js server.js",
+    "start:dev": "node --env-file .env --import=./polyfills.js --watch-path=. server.js",
     "test:setup": "npx playwright install chromium",
     "test": "node --env-file test.env --test --experimental-test-coverage --test-reporter=tap && npm run test:integration",
     "test:unit": "node --env-file test.env --test --experimental-test-coverage --test-reporter=tap",
