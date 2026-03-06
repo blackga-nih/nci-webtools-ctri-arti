@@ -10,6 +10,14 @@ Client (SolidJS) ──► Server (:443) ──┬──► Gateway (:3001) ─�
                                      └──► PostgreSQL (:5432)
 ```
 
+### API Architecture
+
+![API Architecture](docs/api-architecture.png)
+
+### Agent Tool Call / Prompt Loop
+
+![Agent Tool Loop](docs/agent-tool-loop.png)
+
 | Package                           | Type           | Port     | Description                                                                    |
 | --------------------------------- | -------------- | -------- | ------------------------------------------------------------------------------ |
 | [client](client/)                 | Frontend       | —        | Buildless SolidJS chat interface with local IndexedDB storage                  |
