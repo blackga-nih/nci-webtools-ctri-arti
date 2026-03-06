@@ -115,8 +115,10 @@ export async function loginMiddleware(req, res, next) {
  */
 export function oauthMiddleware() {
   const hostname = HOSTNAME || "localhost";
-  const port = PORT !== "443" ? ":" + PORT : "";
-  const issuer = `https://${hostname}${port}`;
+  const useHttps = PORT === "443";
+  const port = useHttps ? "" : `:${PORT}`;
+  const protocol = useHttps ? "https" : "http";
+  const issuer = `${protocol}://${hostname}${port}`;
   const provider = new Provider(issuer, {
     clients: [
       {

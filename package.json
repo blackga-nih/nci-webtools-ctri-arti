@@ -11,7 +11,13 @@
     "users",
     "server"
   ],
+  "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.1003.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.1003.0",
+    "@aws-sdk/client-sts": "^3.1003.0"
+  },
   "scripts": {
+    "setup:bedrock-logging": "node scripts/setup-bedrock-logging.js",
     "start": "npm start -w server",
     "start:gateway": "npm start -w gateway",
     "start:cms": "npm start -w cms",
