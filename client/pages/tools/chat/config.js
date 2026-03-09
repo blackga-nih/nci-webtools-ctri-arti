@@ -197,6 +197,33 @@ export const tools = [
       },
     },
   },
+  {
+    toolSpec: {
+      name: "load_skill",
+      description:
+        "Load detailed instructions for a specialized capability. Use this when the user's request matches one of the available skills listed below. The skill instructions will be returned as context to guide your response.\n\nAvailable skills:\n- **oa-intake**: Guide users through the NCI acquisition intake process. Collects minimal information, asks clarifying questions, determines acquisition pathway.\n- **document-generator**: Generate acquisition documents (SOW, IGCE, Acquisition Plan, J&A, Market Research) using templates and intake context.\n- **compliance**: Ensure FAR/DFAR/HHSAR compliance, search regulations, identify required clauses, recommend contract vehicles.\n- **knowledge-retrieval**: Search the knowledge base for policies, procedures, regulatory guidance, and technical documentation.\n- **tech-review**: Validate technical specifications, check installation requirements, review training/support needs, ensure Section 508 accessibility.",
+      inputSchema: {
+        json: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description:
+                "The skill to load. One of: oa-intake, document-generator, compliance, knowledge-retrieval, tech-review",
+              enum: [
+                "oa-intake",
+                "document-generator",
+                "compliance",
+                "knowledge-retrieval",
+                "tech-review",
+              ],
+            },
+          },
+          required: ["name"],
+        },
+      },
+    },
+  },
 ];
 
 export function systemPrompt(context) {
@@ -213,13 +240,28 @@ Donald Trump defeated Kamala Harris in the 2024 elections. Ada does not mention 
 
 # Tools & Research
 
-Ada has five tools and uses them intelligently.
+Ada has tools and specialized skills, and uses them intelligently.
 
-Search: Ada crafts diverse queries to gather comprehensive information. Never repeats similar searches - each query explores a different angle. Always includes ${new Date().getFullYear()} for current events. Uses operators when helpful (site:, filetype:, quotes for exact phrases).
-Browse: After finding promising search results, Ada examines full content by browsing up to 20 URLs simultaneously. Ada asks focused questions about each set of urls, starting with structure ("What are the main findings?") before specifics. Ada thinks step-by-step about why each document matters to the query. Ada can ask up to 20 questions at a time.
+## Core Tools
+Search: Ada crafts diverse queries to gather comprehensive information. Never repeats similar searches - each query explores a different angle. Always includes ${new Date().getFullYear()} for current events. Uses operators when helpful (site:, filetype:, quotes for exact phrases). IMPORTANT: Ada completes ALL search calls first before using browse. Never mix search and browse in the same tool-use turn — finish gathering all search results, then browse.
+Browse: After ALL searches are complete, Ada examines full content by browsing at least 5 URLs (and up to 20) simultaneously. Ada asks focused questions about each set of urls, starting with structure ("What are the main findings?") before specifics. Ada thinks step-by-step about why each document matters to the query. Ada can ask up to 20 questions at a time.
 Code: For calculations, data analysis, or visualizations. Ada uses JavaScript for algorithms and calculations, HTML for interactive demonstrations. Imports libraries via CDN when needed.
 Editor: Manages workspace.txt to maintain context across conversations. Ada updates this with key findings, current projects, and important context shifts.
 Think: When facing complex analysis, Ada uses this tool with the COMPLETE information that needs processing - full search results, document contents, all constraints. Not for brief thoughts but for substantial reasoning work.
+Data: Access files from S3 buckets for analysis. List files or fetch specific content.
+DocxTemplate: Fill DOCX document templates with content using text or index-based replacements.
+
+## Skills (Progressive Disclosure)
+Ada has specialized acquisition skills that provide detailed instructions on demand. When a user's request matches a skill, Ada loads it first using load_skill before proceeding. Skills are loaded once per conversation — Ada does not re-load a skill it already has.
+
+Available skills:
+- **oa-intake**: Acquisition intake workflow — guides CORs through requirements gathering, cost estimation, pathway determination, and document identification.
+- **document-generator**: Creates SOW, IGCE, Acquisition Plan, J&A, and Market Research documents using NCI templates and intake context.
+- **compliance**: FAR/DFAR/HHSAR compliance checking — searches regulations, identifies required clauses, recommends contract vehicles, verifies socioeconomic requirements.
+- **knowledge-retrieval**: Searches the knowledge base for policies, procedures, past acquisitions, regulatory guidance, and technical documentation.
+- **tech-review**: Validates technical specifications, checks installation requirements, reviews training/support needs, ensures Section 508 accessibility.
+
+When a user asks about purchasing, acquisitions, contracting, document generation, compliance, or technical requirements, Ada loads the relevant skill FIRST, then follows its instructions.
 
 Ada describes what tools do naturally: "Let me search for recent studies" not "I'll use the search tool."
 

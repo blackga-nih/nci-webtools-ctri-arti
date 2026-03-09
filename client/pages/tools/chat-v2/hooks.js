@@ -296,6 +296,10 @@ export const TOOLS = [
     fn: docxTemplate,
     toolSpec: toolSpecs.find((t) => t.toolSpec.name === "docxTemplate")?.toolSpec,
   },
+  {
+    fn: load_skill,
+    toolSpec: toolSpecs.find((t) => t.toolSpec.name === "load_skill")?.toolSpec,
+  },
 ].filter((t) => t.toolSpec);
 
 // =================================================================================
@@ -1090,6 +1094,24 @@ async function docxTemplate({ docxUrl, replacements }) {
     html: result.value,
     warnings: result.messages.filter((m) => m.type === "warning").map((m) => m.message),
   };
+}
+
+// load_skill tool - progressive disclosure: load skill instructions on demand
+const _loadedSkills = new Set();
+
+async function load_skill({ name }) {
+  if (_loadedSkills.has(name)) {
+    return { skill: name, status: "already_loaded", note: "Skill instructions are already in context. Proceed with the task." };
+  }
+
+  const response = await fetch(`/api/v1/skill/${encodeURIComponent(name)}`);
+  if (!response.ok) {
+    throw new Error(`Skill "${name}" not found (${response.status})`);
+  }
+
+  const content = await response.text();
+  _loadedSkills.add(name);
+  return { skill: name, status: "loaded", instructions: content };
 }
 
 // =================================================================================
