@@ -1,11 +1,11 @@
+import db, { rawSql } from "database";
 import { readFile, readdir } from "fs/promises";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 
-import db, { rawSql } from "database";
-
 import { json, Router } from "express";
 
+import { executeOperation, searchFar } from "../compliance-matrix.js";
 import { sendFeedback, sendLogReport } from "../email.js";
 import { requireRole } from "../middleware.js";
 import { parseDocument } from "../parsers.js";
@@ -148,17 +148,19 @@ api.get("/skills", requireRole(), async (req, res) => {
   try {
     const dirs = await readdir(skillsDir, { withFileTypes: true });
     const skills = await Promise.all(
-      dirs.filter((d) => d.isDirectory()).map(async (d) => {
-        try {
-          const content = await readFile(join(skillsDir, d.name, "SKILL.md"), "utf-8");
-          const match = content.match(/^---\n([\s\S]*?)\n---/);
-          if (!match) return { name: d.name, description: "" };
-          const descMatch = match[1].match(/description:\s*(.+)/);
-          return { name: d.name, description: descMatch?.[1]?.trim() || "" };
-        } catch {
-          return null;
-        }
-      })
+      dirs
+        .filter((d) => d.isDirectory())
+        .map(async (d) => {
+          try {
+            const content = await readFile(join(skillsDir, d.name, "SKILL.md"), "utf-8");
+            const match = content.match(/^---\n([\s\S]*?)\n---/);
+            if (!match) return { name: d.name, description: "" };
+            const descMatch = match[1].match(/description:\s*(.+)/);
+            return { name: d.name, description: descMatch?.[1]?.trim() || "" };
+          } catch {
+            return null;
+          }
+        })
     );
     res.json(skills.filter(Boolean));
   } catch {
@@ -166,13 +168,39 @@ api.get("/skills", requireRole(), async (req, res) => {
   }
 });
 
-// Serve plugin data files (matrix.json, thresholds.json, etc.)
+// Compliance matrix — server-side deterministic analysis
+api.post("/compliance", requireRole(), (req, res) => {
+  res.json(executeOperation(req.body));
+});
+
+api.get("/compliance/search-far", requireRole(), (req, res) => {
+  const { keyword, parts } = req.query;
+  const partsList = parts ? parts.split(",") : undefined;
+  res.json({ results: searchFar(keyword || "", partsList) });
+});
+
+// Serve plugin template files (data/templates/*.md) — must be before :file catch-all
+api.get("/plugin/data/templates/:file", requireRole(), async (req, res) => {
+  const file = req.params.file.replace(/[^a-z0-9.-]/gi, "");
+  const filePath = join(PLUGIN_PATH, "data", "templates", file);
+  try {
+    const content = await readFile(filePath, "utf-8");
+    const ct = file.endsWith(".json") ? "application/json" : "text/markdown; charset=utf-8";
+    res.setHeader("Content-Type", ct);
+    res.send(content);
+  } catch {
+    res.status(404).json({ error: `Template "${file}" not found` });
+  }
+});
+
+// Serve plugin data files (matrix.json, thresholds.json, far-database.json, etc.)
 api.get("/plugin/data/:file", requireRole(), async (req, res) => {
   const file = req.params.file.replace(/[^a-z0-9.-]/gi, "");
   const filePath = join(PLUGIN_PATH, "data", file);
   try {
     const content = await readFile(filePath, "utf-8");
-    res.setHeader("Content-Type", "application/json");
+    const ct = file.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json";
+    res.setHeader("Content-Type", ct);
     res.send(content);
   } catch {
     res.status(404).json({ error: `Data file "${file}" not found` });

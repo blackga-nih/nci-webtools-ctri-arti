@@ -37,11 +37,11 @@ Collect only essential information to start. Ask these conversationally, not as 
 
 ### Required Fields
 
-| Field | Question | Why We Ask |
-|-------|----------|------------|
-| **Requirement** | "What do you need?" | Understand the core need |
+| Field              | Question                            | Why We Ask                  |
+| ------------------ | ----------------------------------- | --------------------------- |
+| **Requirement**    | "What do you need?"                 | Understand the core need    |
 | **Estimated Cost** | "What's the estimated total value?" | Determines acquisition type |
-| **Timeline** | "When do you need it?" | Affects urgency and pathway |
+| **Timeline**       | "When do you need it?"              | Affects urgency and pathway |
 
 ### Cost Range Options
 
@@ -69,6 +69,7 @@ Based on initial answers, ask targeted follow-ups. Don't ask everything - only w
 ### 2.1 Requirement Clarity
 
 **Product vs Service:**
+
 ```
 Q: "Is this a PRODUCT (equipment, supplies, software) or SERVICE (consulting, support, research)?"
    ○ Product
@@ -77,6 +78,7 @@ Q: "Is this a PRODUCT (equipment, supplies, software) or SERVICE (consulting, su
 ```
 
 **If SERVICE or BOTH:**
+
 ```
 Q: "Will the work be performed:"
    ○ On-site at NIH/NCI facilities
@@ -99,6 +101,7 @@ Q: "Have you received any quotes or pricing information?"
 ```
 
 **If needs help estimating:**
+
 > "For [requirement type], similar acquisitions typically range from $X to $Y. Does that sound about right?"
 
 ### 2.3 Source Knowledge
@@ -111,6 +114,7 @@ Q: "Do you have a specific vendor in mind?"
 ```
 
 **If "only one vendor":**
+
 ```
 Q: "What makes this vendor unique?"
    □ Proprietary technology/product
@@ -121,6 +125,7 @@ Q: "What makes this vendor unique?"
 ```
 
 **If specific vendor:**
+
 ```
 Q: "Is this vendor a small business?"
    ○ Yes → "Do you know their designation?"
@@ -157,6 +162,7 @@ Q: "Is there a specific event driving your timeline?"
 ```
 
 **If urgent:**
+
 ```
 Q: "Would a delay impact patient safety, research continuity, or cause significant cost?"
    ○ Yes → [Ask for brief explanation]
@@ -269,19 +275,19 @@ Suitable for small business?
 
 ### By Acquisition Type
 
-| Document | Micro (<$10K) | Simplified ($10K-$250K) | Negotiated (>$250K) |
-|----------|:-------------:|:-----------------------:|:-------------------:|
-| Purchase Request | ✓ | ✓ | ✓ |
-| Statement of Work (SOW) | - | ✓ | ✓ |
-| IGCE | - | ✓ | ✓ |
-| Market Research | - | ✓ | ✓ |
-| Acquisition Plan | - | If > $7M | ✓ |
-| Sources Sought | - | Optional | ✓ |
-| J&A (if sole source) | - | If needed | If needed |
-| D&F | - | - | ✓ |
-| Technical Eval Plan | - | - | ✓ |
-| Past Performance Eval | - | - | ✓ |
-| Price/Cost Analysis | - | - | ✓ |
+| Document                | Micro (<$10K) | Simplified ($10K-$250K) | Negotiated (>$250K) |
+| ----------------------- | :-----------: | :---------------------: | :-----------------: |
+| Purchase Request        |       ✓       |            ✓            |          ✓          |
+| Statement of Work (SOW) |       -       |            ✓            |          ✓          |
+| IGCE                    |       -       |            ✓            |          ✓          |
+| Market Research         |       -       |            ✓            |          ✓          |
+| Acquisition Plan        |       -       |        If > $7M         |          ✓          |
+| Sources Sought          |       -       |        Optional         |          ✓          |
+| J&A (if sole source)    |       -       |        If needed        |      If needed      |
+| D&F                     |       -       |            -            |          ✓          |
+| Technical Eval Plan     |       -       |            -            |          ✓          |
+| Past Performance Eval   |       -       |            -            |          ✓          |
+| Price/Cost Analysis     |       -       |            -            |          ✓          |
 
 ### Document Generation Priority
 
@@ -306,13 +312,13 @@ After gathering information, provide a structured summary:
 
 ### Pathway Determination
 
-| Category | Value |
-|----------|-------|
-| Acquisition Type | [Simplified/Negotiated/Micro] |
-| FAR Authority | [Part 12/13/15] |
-| Contract Type | [FFP/T&M/Cost-Plus] |
-| Competition | [Full & Open/Set-Aside/Sole Source] |
-| Vehicle | [New/IDIQ/BPA/GSA] |
+| Category         | Value                               |
+| ---------------- | ----------------------------------- |
+| Acquisition Type | [Simplified/Negotiated/Micro]       |
+| FAR Authority    | [Part 12/13/15]                     |
+| Contract Type    | [FFP/T&M/Cost-Plus]                 |
+| Competition      | [Full & Open/Set-Aside/Sole Source] |
+| Vehicle          | [New/IDIQ/BPA/GSA]                  |
 
 ### Documents Required
 
@@ -340,17 +346,17 @@ Would you like me to help generate any of these documents?
 
 ## Key Thresholds Reference
 
-| Threshold | Amount | Significance |
-|-----------|--------|--------------|
-| **Micro-Purchase (MPT)** | $10,000 | Minimal documentation, purchase card |
-| **Davis-Bacon (services)** | $2,000 | Wage requirements for construction |
-| **Service Contract Act** | $2,500 | Wage requirements for services |
-| **Publicize Requirement** | $25,000 | Synopsis on SAM.gov required |
-| **Simplified (SAT)** | $250,000 | Full competition required above |
-| **Sole Source 8(a) Services** | $4,500,000 | Competition required above |
-| **Sole Source 8(a) Manufacturing** | $7,000,000 | Competition required above |
-| **Cost/Pricing Data (TINA)** | $2,000,000 | Certified data required |
-| **Written Acquisition Plan** | $7,000,000 | FAR 7.105 requirements |
+| Threshold                          | Amount     | Significance                         |
+| ---------------------------------- | ---------- | ------------------------------------ |
+| **Micro-Purchase (MPT)**           | $10,000    | Minimal documentation, purchase card |
+| **Davis-Bacon (services)**         | $2,000     | Wage requirements for construction   |
+| **Service Contract Act**           | $2,500     | Wage requirements for services       |
+| **Publicize Requirement**          | $25,000    | Synopsis on SAM.gov required         |
+| **Simplified (SAT)**               | $250,000   | Full competition required above      |
+| **Sole Source 8(a) Services**      | $4,500,000 | Competition required above           |
+| **Sole Source 8(a) Manufacturing** | $7,000,000 | Competition required above           |
+| **Cost/Pricing Data (TINA)**       | $2,000,000 | Certified data required              |
+| **Written Acquisition Plan**       | $7,000,000 | FAR 7.105 requirements               |
 
 ---
 
@@ -377,12 +383,14 @@ Would you like me to help generate any of these documents?
 **EAGLE:** "Thanks! Based on what you've told me:
 
 ## Acquisition Summary
+
 - **Type:** Simplified Acquisition (FAR Part 13)
 - **Value:** ~$85,000
 - **Sole Source:** Likely qualifies under FAR 6.302-1 (proprietary equipment)
 - **Timeline:** March delivery
 
 ## Documents Needed:
+
 1. ✅ Statement of Work (SOW)
 2. ✅ IGCE - Independent Cost Estimate
 3. ✅ Sole Source Justification (J&A)
@@ -407,7 +415,9 @@ Would you like me to help draft the Statement of Work first?"
 ## Integration with Other Skills
 
 ### → Document Generator
+
 When user is ready to create documents, hand off with context:
+
 ```json
 {
   "skill": "document-generator",
@@ -422,7 +432,9 @@ When user is ready to create documents, hand off with context:
 ```
 
 ### → Compliance
+
 When user asks regulatory questions:
+
 ```json
 {
   "skill": "compliance",
@@ -435,7 +447,9 @@ When user asks regulatory questions:
 ```
 
 ### → Knowledge Retrieval
+
 When user needs to search for precedents or policies:
+
 ```json
 {
   "skill": "knowledge-retrieval",

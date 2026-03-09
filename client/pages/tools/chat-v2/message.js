@@ -7,12 +7,12 @@ import { X } from "lucide-solid";
 import { createSignal, ErrorBoundary, For, onCleanup } from "solid-js";
 import html from "solid-js/html";
 
-
 import BrowseTool from "../../../components/chat-tools/browse-tool.js";
 import CodeTool from "../../../components/chat-tools/code-tool.js";
 import DataTool from "../../../components/chat-tools/data-tool.js";
 import DocxTemplateTool from "../../../components/chat-tools/docx-template-tool.js";
 import EditorTool from "../../../components/chat-tools/editor-tool.js";
+import LoadSkillTool from "../../../components/chat-tools/load-skill-tool.js";
 import ReasoningTool from "../../../components/chat-tools/reasoning-tool.js";
 import SearchTool from "../../../components/chat-tools/search-tool.js";
 import TextContent from "../../../components/chat-tools/text-content.js";
@@ -25,6 +25,7 @@ const TOOL_COMPONENTS = {
   editor: EditorTool,
   think: ReasoningTool,
   docxTemplate: DocxTemplateTool,
+  load_skill: LoadSkillTool,
 };
 
 /**

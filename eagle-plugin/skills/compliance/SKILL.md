@@ -16,15 +16,19 @@ Ensure acquisition packages meet FAR, DFAR, and HHSAR requirements. Search regul
 ## Core Functions
 
 ### 1. FAR/DFAR/HHSAR Search
+
 Search the regulation database for relevant clauses, requirements, and guidance.
 
 ### 2. Clause Identification
+
 Determine which clauses are required based on contract type, value, and requirements.
 
 ### 3. Contract Vehicle Recommendation
+
 Recommend optimal contract vehicles (GSA, NITAAC, NIH BPAs, full competition).
 
 ### 4. Socioeconomic Compliance
+
 Verify small business set-aside requirements and opportunities.
 
 ---
@@ -36,6 +40,7 @@ Verify small business set-aside requirements and opportunities.
 **Default requirement:** All acquisitions above SAT must use full and open competition unless an exception applies.
 
 **Publicizing Requirements (FAR Part 5):**
+
 - > $25,000: Synopsis required on SAM.gov
 - 15-day response time (most actions)
 - 30-day response time (sealed bidding)
@@ -43,25 +48,25 @@ Verify small business set-aside requirements and opportunities.
 
 ### Exceptions (FAR 6.302)
 
-| Exception | Authority | Common Use Cases |
-|-----------|-----------|------------------|
-| Only One Source | 6.302-1 | Proprietary technology, unique expertise |
-| Urgency | 6.302-2 | Safety, security, research continuity |
-| Industrial Mobilization | 6.302-3 | Expert services, R&D capability |
-| International Agreement | 6.302-4 | NATO, treaty obligations |
-| Authorized by Statute | 6.302-5 | 8(a) sole source, specific laws |
-| National Security | 6.302-6 | Classified requirements |
-| Public Interest | 6.302-7 | Agency head only (rare) |
+| Exception               | Authority | Common Use Cases                         |
+| ----------------------- | --------- | ---------------------------------------- |
+| Only One Source         | 6.302-1   | Proprietary technology, unique expertise |
+| Urgency                 | 6.302-2   | Safety, security, research continuity    |
+| Industrial Mobilization | 6.302-3   | Expert services, R&D capability          |
+| International Agreement | 6.302-4   | NATO, treaty obligations                 |
+| Authorized by Statute   | 6.302-5   | 8(a) sole source, specific laws          |
+| National Security       | 6.302-6   | Classified requirements                  |
+| Public Interest         | 6.302-7   | Agency head only (rare)                  |
 
 ### J&A Approval Thresholds (FAR 6.304)
 
-| Estimated Value | Approval Authority |
-|-----------------|-------------------|
-| ≤ $750,000 | Contracting Officer |
-| ≤ $15,000,000 | Competition Advocate |
-| ≤ $75,000,000 | Head of Procuring Activity (HPA) |
-| ≤ $100,000,000 | Senior Procurement Executive |
-| > $100,000,000 | Agency Head (non-delegable) |
+| Estimated Value | Approval Authority               |
+| --------------- | -------------------------------- |
+| ≤ $750,000      | Contracting Officer              |
+| ≤ $15,000,000   | Competition Advocate             |
+| ≤ $75,000,000   | Head of Procuring Activity (HPA) |
+| ≤ $100,000,000  | Senior Procurement Executive     |
+| > $100,000,000  | Agency Head (non-delegable)      |
 
 ---
 
@@ -71,18 +76,20 @@ Verify small business set-aside requirements and opportunities.
 
 **Best for:** Commercial products/services, broad competition, fast procurement
 
-| Threshold | Procedure |
-|-----------|-----------|
-| ≤ $10,000 | Order from one source |
-| $10,001 - $250,000 | Seek quotes from 3+ schedule contractors |
-| > $250,000 | Seek quotes from reasonable number; consider ordering procedures |
+| Threshold          | Procedure                                                        |
+| ------------------ | ---------------------------------------------------------------- |
+| ≤ $10,000          | Order from one source                                            |
+| $10,001 - $250,000 | Seek quotes from 3+ schedule contractors                         |
+| > $250,000         | Seek quotes from reasonable number; consider ordering procedures |
 
 **Pros:**
+
 - Pre-negotiated pricing
 - Pre-competed terms
 - Faster procurement cycle
 
 **Cons:**
+
 - Limited to GSA contractors
 - May not have specialized requirements
 - Pricing may not reflect best value
@@ -90,22 +97,26 @@ Verify small business set-aside requirements and opportunities.
 ### 2. NITAAC Vehicles (NIH IT Acquisition)
 
 **CIO-SP3 (Chief Information Officer Solutions and Partners III)**
+
 - IT services and solutions
 - Small Business and Unrestricted tracks
 - 8(a) set-aside available
 - Ceiling: $40 billion
 
 **CIO-CS (Chief Information Officer Commodities and Solutions)**
+
 - IT commodities and ancillary services
 - Small business focused
 - Ceiling: $20 billion
 
 **Pros:**
+
 - NIH-specific IT expertise
 - Fair opportunity procedures
 - Pre-qualified contractors
 
 **Cons:**
+
 - IT-focused only
 - Specific ordering procedures required
 
@@ -114,6 +125,7 @@ Verify small business set-aside requirements and opportunities.
 **Best for:** Recurring requirements, known vendors, established relationships
 
 **Common NIH BPAs:**
+
 - Scientific equipment maintenance
 - Laboratory supplies
 - Research services
@@ -121,10 +133,12 @@ Verify small business set-aside requirements and opportunities.
 ### 4. 8(a) Program (FAR 19.8)
 
 **Sole Source Thresholds:**
+
 - Services: ≤ $4,500,000
 - Manufacturing: ≤ $7,000,000
 
 **Competitive Thresholds:**
+
 - Above sole source limits
 - SBA offering letter required
 
@@ -133,6 +147,7 @@ Verify small business set-aside requirements and opportunities.
 **Best for:** Large acquisitions, maximum competition, best value
 
 **Process:**
+
 1. Synopsis on SAM.gov
 2. Issue solicitation (RFP/RFQ)
 3. Receive and evaluate proposals
@@ -147,30 +162,31 @@ Verify small business set-aside requirements and opportunities.
 **Required for:** All acquisitions above micro-purchase threshold ($10,000)
 
 **Automatic Set-Aside:** Acquisitions between $10,000 and SAT ($250,000) if:
+
 - Reasonable expectation of 2+ responsible small business offers
 - Award will be at fair market price
 
 ### Set-Aside Categories
 
-| Category | Abbreviation | Primary Eligibility |
-|----------|--------------|---------------------|
-| Small Business | SB | Meets SBA size standards |
-| 8(a) Business Development | 8(a) | SBA-certified disadvantaged |
-| HUBZone | HUBZone | Located in underutilized zone |
-| Service-Disabled Veteran-Owned | SDVOSB | Veteran-owned with disability |
-| Women-Owned | WOSB | 51%+ women-owned |
-| Economically Disadvantaged WOSB | EDWOSB | WOSB in designated NAICS |
+| Category                        | Abbreviation | Primary Eligibility           |
+| ------------------------------- | ------------ | ----------------------------- |
+| Small Business                  | SB           | Meets SBA size standards      |
+| 8(a) Business Development       | 8(a)         | SBA-certified disadvantaged   |
+| HUBZone                         | HUBZone      | Located in underutilized zone |
+| Service-Disabled Veteran-Owned  | SDVOSB       | Veteran-owned with disability |
+| Women-Owned                     | WOSB         | 51%+ women-owned              |
+| Economically Disadvantaged WOSB | EDWOSB       | WOSB in designated NAICS      |
 
 ### Size Standards
 
 Size standards vary by NAICS code. Common examples:
 
-| NAICS | Description | Size Standard |
-|-------|-------------|---------------|
-| 541511 | Custom Computer Programming | $34M avg annual receipts |
-| 541512 | Computer Systems Design | $34M avg annual receipts |
-| 339112 | Surgical Instrument Manufacturing | 1,000 employees |
-| 541714 | Research & Development | $30M avg annual receipts |
+| NAICS  | Description                       | Size Standard            |
+| ------ | --------------------------------- | ------------------------ |
+| 541511 | Custom Computer Programming       | $34M avg annual receipts |
+| 541512 | Computer Systems Design           | $34M avg annual receipts |
+| 339112 | Surgical Instrument Manufacturing | 1,000 employees          |
+| 541714 | Research & Development            | $30M avg annual receipts |
 
 **Verification:** Check SBA Dynamic Small Business Search and SAM.gov
 
@@ -179,6 +195,7 @@ Size standards vary by NAICS code. Common examples:
 **Required for:** Contracts > $750,000 ($1.5M for construction) with large business primes
 
 **Must include:**
+
 - Small business subcontracting goals
 - Categories to be subcontracted
 - Method for developing goals
@@ -191,6 +208,7 @@ Size standards vary by NAICS code. Common examples:
 ### By Contract Type
 
 #### Fixed-Price Contracts
+
 - FAR 52.212-4 Contract Terms (Commercial)
 - FAR 52.232-1 Payments
 - FAR 52.233-1 Disputes
@@ -198,6 +216,7 @@ Size standards vary by NAICS code. Common examples:
 - FAR 52.249-2 Termination for Convenience (FFP)
 
 #### Cost-Reimbursement Contracts
+
 - FAR 52.216-7 Allowable Cost and Payment
 - FAR 52.216-8 Fixed Fee
 - FAR 52.230-2 Cost Accounting Standards (if applicable)
@@ -205,6 +224,7 @@ Size standards vary by NAICS code. Common examples:
 - FAR 52.249-6 Termination (Cost-Reimbursement)
 
 #### Time-and-Materials/Labor-Hour
+
 - FAR 52.232-7 Payments under T&M/LH
 - FAR 52.216-29 T&M/LH Ceiling
 - D&F required (FAR 16.601)
@@ -212,19 +232,23 @@ Size standards vary by NAICS code. Common examples:
 ### By Threshold
 
 #### All Contracts
+
 - FAR 52.203-3 Gratuities
 - FAR 52.203-5 Covenant Against Contingent Fees
 - FAR 52.223-6 Drug-Free Workplace
 
 #### > $10,000
+
 - FAR 52.222-21 Prohibition of Segregated Facilities
 - FAR 52.222-26 Equal Opportunity
 
 #### > $25,000
+
 - FAR 52.203-6 Restrictions on Subcontractor Sales
 - FAR 52.204-25 Prohibition on Covered Telecommunications
 
 #### > $150,000
+
 - FAR 52.203-12 Limitation on Payments (Lobbying)
 - FAR 52.219-8 Utilization of Small Business
 - FAR 52.222-35 Equal Opportunity for Veterans
@@ -232,9 +256,11 @@ Size standards vary by NAICS code. Common examples:
 - FAR 52.222-37 Employment Reports on Veterans
 
 #### > $750,000
+
 - FAR 52.219-9 Small Business Subcontracting Plan (for large businesses)
 
 #### > $2,000,000
+
 - FAR 52.215-10/11 Price Reduction for Defective Certified Cost Data
 - FAR 52.215-12/13 Subcontractor Certified Cost Data
 
@@ -253,20 +279,23 @@ Size standards vary by NAICS code. Common examples:
 ### Search the FAR Database
 
 Query the embedded FAR database (`data/far-database.json`) for:
+
 - Specific FAR/DFAR sections
 - Keyword searches
 - Thematic searches (competition, small business, pricing)
 
 **Search Parameters:**
+
 ```json
 {
   "query": "search terms",
-  "parts": ["6", "15", "19"],  // Optional: limit to specific parts
+  "parts": ["6", "15", "19"], // Optional: limit to specific parts
   "type": "regulation|guidance|clause"
 }
 ```
 
 **Response Format:**
+
 ```json
 {
   "results": [
@@ -289,6 +318,7 @@ Query the embedded FAR database (`data/far-database.json`) for:
 ## Compliance Checklist
 
 ### Pre-Solicitation
+
 - [ ] Market research documented (FAR 10)
 - [ ] Acquisition plan completed (if > $7M)
 - [ ] Competition requirements met (FAR 6)
@@ -297,6 +327,7 @@ Query the embedded FAR database (`data/far-database.json`) for:
 - [ ] J&A approved (if sole source)
 
 ### Solicitation
+
 - [ ] Evaluation criteria defined
 - [ ] Required clauses included
 - [ ] Section 508 addressed (if IT)
@@ -304,6 +335,7 @@ Query the embedded FAR database (`data/far-database.json`) for:
 - [ ] Data rights addressed
 
 ### Award
+
 - [ ] Price/cost analysis completed
 - [ ] Contractor responsibility verified
 - [ ] SAM registration verified
@@ -315,18 +347,43 @@ Query the embedded FAR database (`data/far-database.json`) for:
 ## Integration with Other Skills
 
 ### From OA Intake
+
 When intake determines:
+
 - Acquisition type → Check required clauses
 - Sole source → Identify J&A authority
 - Set-aside → Verify SB compliance
 
 ### From Document Generator
+
 After documents created:
+
 - SOW → Verify performance requirements
 - J&A → Verify authority and approval level
 
 ### To Knowledge Retrieval
+
 When detailed search needed:
+
 - Policy clarifications
 - Precedent searches
 - Complex regulatory questions
+
+---
+
+## Risk Triggers
+
+Flag these conditions and escalate when detected during compliance analysis.
+
+1. Sole source determination without clear FAR 6.302 authority match
+2. Small business set-aside bypass in competitive acquisition >$250K
+3. Total small business program exclusion (no set-aside, no subcontracting plan)
+4. Section 508 waiver or exception request required
+5. Foreign contractor involvement requiring security review
+6. Procurement method deviation from agency standard practices
+7. Multiple regulatory waivers or exceptions in single acquisition
+8. Executive Order compliance issues (Buy American, domestic preferences)
+9. Consolidation of previously separate contracts >$2M threshold
+10. Use of emergency acquisition authorities outside genuine emergency
+11. Contract terms conflicting with mandatory FAR clauses
+12. Acquisition crossing multiple fiscal years without proper authority

@@ -11,7 +11,22 @@ import { jsonToXml } from "./xml.js";
  * @param {any} tools - The tools object with tool names as keys and functions as values.
  * @returns {Promise<any>} - The tool output
  */
-export async function runTool(toolUse, tools = { search, browse, code, editor, think, data, docxTemplate }) {
+export async function runTool(
+  toolUse,
+  tools = {
+    search,
+    browse,
+    code,
+    editor,
+    think,
+    data,
+    docxTemplate,
+    load_skill,
+    plugin_data,
+    search_far,
+    query_compliance_matrix,
+  }
+) {
   let { toolUseId, name, input } = toolUse;
   try {
     const results = await tools?.[name]?.(input);
@@ -237,11 +252,7 @@ export async function docxTemplate({ docxUrl, replacements }) {
  * @param {string} params.filename - Filename for the downloaded file
  * @returns {Promise<void>}
  */
-export async function downloadDocxTemplate({
-  docxUrl,
-  replacements,
-  filename,
-}) {
+export async function downloadDocxTemplate({ docxUrl, replacements, filename }) {
   // 1. Fetch the document
   let templateBuffer;
 
@@ -268,6 +279,76 @@ export async function downloadDocxTemplate({
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
   downloadBlob(filename, blob);
+}
+
+/**
+ * Search the FAR database by keyword with optional part filter.
+ * @param {object} params
+ * @param {string} params.keyword - Search terms
+ * @param {string[]} [params.parts] - Optional FAR part numbers to filter by
+ * @returns {Promise<object>} - Matching FAR entries
+ */
+export async function search_far({ keyword, parts }) {
+  const params = new URLSearchParams({ keyword });
+  if (parts?.length) params.set("parts", parts.join(","));
+  const response = await fetch(`/api/v1/compliance/search-far?${params}`);
+  if (!response.ok) throw new Error(`FAR search failed (${response.status})`);
+  return await response.json();
+}
+
+/**
+ * Query the compliance matrix for deterministic analysis of a procurement scenario.
+ * @param {object} params - Operation parameters
+ * @returns {Promise<object>} - Compliance analysis results
+ */
+export async function query_compliance_matrix(params) {
+  const response = await fetch("/api/v1/compliance", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) throw new Error(`Compliance query failed (${response.status})`);
+  return await response.json();
+}
+
+/**
+ * Fetch EAGLE plugin data files (templates, reference data).
+ * @param {object} params
+ * @param {string} params.path - File path (e.g. 'templates/sow-template.md')
+ * @returns {Promise<object>} - File contents
+ */
+export async function plugin_data({ path }) {
+  const url = path.startsWith("templates/")
+    ? `/api/v1/plugin/data/${path}`
+    : `/api/v1/plugin/data/${encodeURIComponent(path)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Plugin data "${path}" not found (${response.status})`);
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("json")) return await response.json();
+  return { content: await response.text() };
+}
+
+const _loadedSkills = new Set();
+
+/**
+ * Load a skill's instructions from the server.
+ * @param {object} params
+ * @param {string} params.name - The skill name to load
+ * @returns {Promise<object>} - Skill status and instructions
+ */
+export async function load_skill({ name }) {
+  if (_loadedSkills.has(name)) {
+    return {
+      skill: name,
+      status: "already_loaded",
+      note: "Skill instructions are already in context.",
+    };
+  }
+  const response = await fetch(`/api/v1/skill/${encodeURIComponent(name)}`);
+  if (!response.ok) throw new Error(`Skill "${name}" not found (${response.status})`);
+  const content = await response.text();
+  _loadedSkills.add(name);
+  return { skill: name, status: "loaded", instructions: content };
 }
 
 /**

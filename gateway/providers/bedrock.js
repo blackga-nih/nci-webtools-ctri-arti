@@ -1172,7 +1172,27 @@ const response = await client.send(command);
 
 export default class BedrockProvider {
   constructor() {
-    this.client = new BedrockRuntimeClient();
+    const profile = process.env.AWS_PROFILE;
+    this.client = new BedrockRuntimeClient({
+      ...(profile && {
+        credentials: async () => {
+          // Use AWS CLI to resolve SSO credentials (workaround for SDK SSO provider
+          // injecting control characters into credentials on Node 20.x)
+          const { execSync } = await import("child_process");
+          const json = execSync(
+            `aws configure export-credentials --profile ${profile} --format process`,
+            { encoding: "utf-8", timeout: 10000 }
+          );
+          const creds = JSON.parse(json);
+          return {
+            accessKeyId: creds.AccessKeyId,
+            secretAccessKey: creds.SecretAccessKey,
+            sessionToken: creds.SessionToken,
+            expiration: creds.Expiration ? new Date(creds.Expiration) : undefined,
+          };
+        },
+      }),
+    });
   }
 
   /**
