@@ -5,7 +5,9 @@ import html from "solid-js/html";
 import { AlertContainer } from "../../../components/alert.js";
 import BrowseTool from "../../../components/chat-tools/browse-tool.js";
 import CodeTool from "../../../components/chat-tools/code-tool.js";
+import ComplianceTool from "../../../components/chat-tools/compliance-tool.js";
 import EditorTool from "../../../components/chat-tools/editor-tool.js";
+import KnowledgeTool from "../../../components/chat-tools/knowledge-tool.js";
 import LoadSkillTool from "../../../components/chat-tools/load-skill-tool.js";
 import ReasoningTool from "../../../components/chat-tools/reasoning-tool.js";
 import SearchTool from "../../../components/chat-tools/search-tool.js";
@@ -19,6 +21,10 @@ const TOOL_COMPONENTS = {
   editor: EditorTool,
   think: ReasoningTool,
   load_skill: LoadSkillTool,
+  knowledge_search: KnowledgeTool,
+  knowledge_fetch: KnowledgeTool,
+  search_far: ComplianceTool,
+  query_compliance_matrix: ComplianceTool,
 };
 
 export default function Message(p) {
