@@ -1,17 +1,18 @@
 {
-  "version": "FY2024",
-  "last_updated": "2024-10-01",
-  "source": "FAR and annual adjustments",
+  "version": "FAC 2025-06",
+  "last_updated": "2025-10-01",
+  "source": "FAR and HHS PMR Threshold Matrix",
   "thresholds": {
     "micro_purchase": {
-      "general": 10000,
+      "general": 15000,
       "construction": 2000,
       "services_subject_to_sca": 2500,
       "contingency_operations": 25000,
+      "outside_us_commercial": 25000,
       "description": "Maximum for purchases using simplified methods without competition requirements"
     },
     "simplified_acquisition": {
-      "sat": 250000,
+      "sat": 350000,
       "commercial_simplified_test": 7500000,
       "commercial_simplified_test_certain": 15000000,
       "description": "Simplified Acquisition Threshold - full competition required above this"
@@ -24,13 +25,22 @@
       "description": "Synopsis on SAM.gov required above this threshold"
     },
     "cost_pricing_data": {
-      "tina_threshold": 2000000,
+      "tina_threshold": 2500000,
       "description": "Truth in Negotiations Act - certified cost or pricing data required"
     },
+    "congressional_notification": {
+      "threshold": 4500000,
+      "contact": "grantfax@hhs.gov",
+      "description": "Congressional notification required above this threshold"
+    },
+    "enhanced_procedures_idiq": {
+      "threshold": 6000000,
+      "description": "Enhanced evaluation factors, post-award notifications, debriefing documentation required for IDIQ orders"
+    },
     "acquisition_plan": {
-      "new_contract": 7000000,
+      "new_contract": 350000,
       "task_delivery_order": 50000000,
-      "description": "Written acquisition plan required (FAR 7.105)"
+      "description": "Written acquisition plan required (FAR 7.105, HHSAM 307.105)"
     },
     "sole_source_8a": {
       "services": 4500000,
@@ -41,6 +51,11 @@
       "required": 750000,
       "construction": 1500000,
       "description": "Small business subcontracting plan required for large business primes"
+    },
+    "spe_approval": {
+      "single_award_idiq": 100000000,
+      "single_award_bpa": 100000000,
+      "description": "Senior Procurement Executive approval required for single-award IDIQ/BPA"
     },
     "j_a_approval": {
       "contracting_officer": 750000,
@@ -63,31 +78,10 @@
       "description": "Prevailing wages for service employees"
     }
   },
-  "small_business_size_standards": {
-    "source": "SBA Table of Size Standards",
-    "common_examples": {
-      "541511": {
-        "description": "Custom Computer Programming Services",
-        "size": "$34 million"
-      },
-      "541512": {
-        "description": "Computer Systems Design Services",
-        "size": "$34 million"
-      },
-      "541714": {
-        "description": "Research and Development in Biotechnology",
-        "size": "$30 million"
-      },
-      "339112": {
-        "description": "Surgical and Medical Instrument Manufacturing",
-        "size": "1,000 employees"
-      }
-    },
-    "lookup": "https://www.sba.gov/size-standards"
-  },
   "notes": [
-    "Thresholds are adjusted periodically. Verify current values at acquisition.gov.",
-    "DoD may have different thresholds for certain categories.",
-    "Inflation adjustments are typically made in October of odd-numbered years."
+    "Thresholds effective October 1, 2025 per FAC 2025-06.",
+    "Above MPT ($15,000): HHS-653 Small Business Review Form required.",
+    "Above SAT ($350,000): Full Acquisition Plan, HHS Market Research Report, J&A for sole source, CPARS required.",
+    "Above $750,000: Subcontracting plan required for non-small business awards."
   ]
 }

@@ -129,6 +129,102 @@ api.get("/data", requireRole(), async (req, res) => {
   }
 });
 
+// Knowledge base — search and fetch documents from S3
+const KB_BUCKET = "rh-eagle-files";
+const KB_AGENTS = [
+  "compliance-strategist",
+  "financial-advisor",
+  "legal-counselor",
+  "market-intelligence",
+  "public-interest-guardian",
+  "shared",
+  "supervisor-core",
+  "technical-translator",
+];
+
+api.get("/knowledge/search", requireRole(), async (req, res) => {
+  const { agent, keyword, topic } = req.query;
+  try {
+    // Fuzzy-match agent name (e.g. "legal" -> "legal-counselor", "GAO" -> ignored)
+    const matchedAgent = agent
+      ? KB_AGENTS.find((a) => a === agent || a.includes(agent.toLowerCase()))
+      : null;
+    const prefix = matchedAgent ? `${matchedAgent}/` : "";
+    const allFiles = await listFiles(KB_BUCKET, prefix);
+
+    let results = allFiles
+      .filter((key) => key.endsWith(".txt") || key.endsWith(".md") || key.endsWith(".json"))
+      .map((key) => {
+        const parts = key.split("/");
+        const agentName = parts[0];
+        const folder = parts.length > 2 ? parts[1] : "";
+        const filename = parts[parts.length - 1];
+        return { s3_key: key, agent: agentName, folder, filename };
+      });
+
+    // Filter by keyword against filename and path (normalize both sides)
+    if (keyword) {
+      const normalize = (s) => s.toLowerCase().replace(/[_-]/g, " ");
+      const terms = normalize(keyword)
+        .split(/\s+/)
+        .filter((t) => t.length >= 3);
+      if (terms.length > 0) {
+        results = results
+          .map((r) => {
+            const text = normalize(r.s3_key);
+            const matched = terms.filter((t) => text.includes(t));
+            return { ...r, _score: matched.length / terms.length };
+          })
+          .filter((r) => r._score > 0)
+          .sort((a, b) => b._score - a._score);
+      }
+    }
+
+    // Filter by topic (match against folder and path — treat as additional search terms)
+    if (topic) {
+      const normalize = (s) => s.toLowerCase().replace(/[_-]/g, " ");
+      const topicTerms = normalize(topic)
+        .split(/\s+/)
+        .filter((t) => t.length >= 3);
+      if (topicTerms.length > 0) {
+        results = results.filter((r) => {
+          const text = normalize(r.s3_key);
+          return topicTerms.some((t) => text.includes(t));
+        });
+      }
+    }
+
+    res.json({ count: results.length, results: results.slice(0, 30) });
+  } catch (err) {
+    console.error("Knowledge search error:", err);
+    res.status(500).json({ error: "Knowledge search failed" });
+  }
+});
+
+api.get("/knowledge/fetch", requireRole(), async (req, res) => {
+  const { key } = req.query;
+  if (!key) return res.status(400).json({ error: "key parameter required" });
+
+  try {
+    const data = await getFile(KB_BUCKET, key);
+    const chunks = [];
+    for await (const chunk of data.Body) {
+      chunks.push(chunk);
+    }
+    const content = Buffer.concat(chunks).toString("utf-8");
+    const MAX_CONTENT = 50000;
+    res.json({
+      document_id: key,
+      content: content.substring(0, MAX_CONTENT),
+      truncated: content.length > MAX_CONTENT,
+      content_length: content.length,
+    });
+  } catch (err) {
+    console.error("Knowledge fetch error:", err);
+    res.status(404).json({ error: `Document not found: ${key}` });
+  }
+});
+
 // Skill loading — progressive disclosure for acquisition skills
 api.get("/skill/:name", requireRole(), async (req, res) => {
   const name = req.params.name.replace(/[^a-z0-9-]/gi, "");

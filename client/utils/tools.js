@@ -25,6 +25,8 @@ export async function runTool(
     plugin_data,
     search_far,
     query_compliance_matrix,
+    knowledge_search,
+    knowledge_fetch,
   }
 ) {
   let { toolUseId, name, input } = toolUse;
@@ -308,6 +310,37 @@ export async function query_compliance_matrix(params) {
     body: JSON.stringify(params),
   });
   if (!response.ok) throw new Error(`Compliance query failed (${response.status})`);
+  return await response.json();
+}
+
+/**
+ * Search the EAGLE knowledge base for acquisition documents.
+ * @param {object} params - Search parameters
+ * @param {string} [params.agent] - Filter by agent folder
+ * @param {string} [params.keyword] - Search terms
+ * @param {string} [params.topic] - Filter by topic/subfolder
+ * @returns {Promise<object>} - Search results with s3_keys
+ */
+export async function knowledge_search({ agent, keyword, topic }) {
+  const params = new URLSearchParams();
+  if (agent) params.set("agent", agent);
+  if (keyword) params.set("keyword", keyword);
+  if (topic) params.set("topic", topic);
+  const response = await fetch(`/api/v1/knowledge/search?${params}`);
+  if (!response.ok) throw new Error(`Knowledge search failed (${response.status})`);
+  return await response.json();
+}
+
+/**
+ * Fetch a document from the EAGLE knowledge base.
+ * @param {object} params - Fetch parameters
+ * @param {string} params.key - S3 key from knowledge_search results
+ * @returns {Promise<object>} - Document content
+ */
+export async function knowledge_fetch({ key }) {
+  const params = new URLSearchParams({ key });
+  const response = await fetch(`/api/v1/knowledge/fetch?${params}`);
+  if (!response.ok) throw new Error(`Knowledge fetch failed (${response.status})`);
   return await response.json();
 }
 

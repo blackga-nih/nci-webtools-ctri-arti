@@ -284,6 +284,54 @@ export const tools = [
   },
   {
     toolSpec: {
+      name: "knowledge_search",
+      description:
+        "Search the EAGLE knowledge base for acquisition documents, regulations, GAO cases, NIH policies, checklists, and guidance. Returns a list of matching documents with S3 keys that can be fetched with knowledge_fetch.\n\nThe KB is organized by agent specialization:\n- **compliance-strategist**: FAR guidance, HHSAR, NIH policies, PMR checklists, SOPs\n- **financial-advisor**: Appropriations law, contract financing, cost analysis\n- **legal-counselor**: GAO cases, protest guidance, ethics, IP/data rights, appropriations law\n- **market-intelligence**: Market research guides, small business, vehicle info\n- **technical-translator**: Technical standards, agile contracting, human subjects\n- **public-interest-guardian**: Ethics, transparency requirements\n- **supervisor-core**: Core procedures, checklists, templates\n- **shared**: Cross-cutting reference materials",
+      inputSchema: {
+        json: {
+          type: "object",
+          properties: {
+            agent: {
+              type: "string",
+              description:
+                "Filter by agent folder: compliance-strategist, financial-advisor, legal-counselor, market-intelligence, technical-translator, public-interest-guardian, supervisor-core, shared",
+            },
+            keyword: {
+              type: "string",
+              description:
+                "Search terms to match against file names and paths (e.g. 'IDIQ', 'protest', 'threshold', 'B-302358')",
+            },
+            topic: {
+              type: "string",
+              description:
+                "Filter by topic/subfolder (e.g. 'appropriations-law', 'FAR-guidance', 'protest-guidance', 'PMR-checklists')",
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    toolSpec: {
+      name: "knowledge_fetch",
+      description:
+        "Fetch the full text content of a document from the EAGLE knowledge base. Use the s3_key from knowledge_search results. Returns document text (up to 50KB).",
+      inputSchema: {
+        json: {
+          type: "object",
+          properties: {
+            key: {
+              type: "string",
+              description: "The S3 key of the document to fetch (from knowledge_search results)",
+            },
+          },
+          required: ["key"],
+        },
+      },
+    },
+  },
+  {
+    toolSpec: {
       name: "load_skill",
       description:
         "Load detailed instructions for a specialized capability. Use this when the user's request matches one of the available skills listed below. The skill instructions will be returned as context to guide your response.\n\nAvailable skills:\n- **oa-intake**: Guide users through the NCI acquisition intake process. Collects minimal information, asks clarifying questions, determines acquisition pathway.\n- **document-generator**: Generate acquisition documents (SOW, IGCE, Acquisition Plan, J&A, Market Research) using templates and intake context.\n- **compliance**: Ensure FAR/DFAR/HHSAR compliance, search regulations, identify required clauses, recommend contract vehicles.\n- **policy-research**: Search the knowledge base for FAR/DFARS/HHSAR regulations, agency policies, procedures, precedents, and templates.\n- **technical-review**: Validate technical specifications, translate scientific/IT needs into contract language, review installation/training/support, Section 508 accessibility, evaluation criteria.\n- **legal-counsel**: Assess legal risks, protest vulnerabilities, FAR compliance, appropriations law, GAO case precedents.\n- **market-intelligence**: Research market conditions, vendors, pricing, GSA schedules, small business opportunities and set-asides.\n- **public-interest**: Ensure fair competition, transparency, public accountability. Evaluate taxpayer value and flag fairness issues.\n- **policy-analyst**: Strategic regulatory intelligence. Monitor FAR changes, analyze CO review patterns, assess organizational impact.\n- **policy-librarian**: KB curator and quality control. Detect contradictions, version conflicts, gaps, staleness, citation errors.",
@@ -330,12 +378,14 @@ FIVE-PHASE INTAKE WORKFLOW:
   Phase 4 — Document Requirements: Identify required documents by acquisition type and generate them.
   Phase 5 — Summary & Handoff: Produce acquisition summary with determination table, document checklist, and next steps.
 
-KEY THRESHOLDS:
+KEY THRESHOLDS (FAC 2025-06, effective October 1, 2025):
   Micro-Purchase Threshold (MPT): $15,000 — minimal documentation
-  Simplified Acquisition Threshold (SAT): $250,000 — full competition above
-  Cost/Pricing Data: $750,000 — certified cost data required above
-  8(a) Sole Source: $4M (services/non-mfg), $7M (manufacturing)
-  Davis-Bacon: $25,000 — wage requirements apply for services
+  Simplified Acquisition Threshold (SAT): $350,000 — full competition above
+  Cost/Pricing Data: $2,500,000 — certified cost data required above
+  Subcontracting Plan: $750,000 — required for large business primes
+  8(a) Sole Source: $4.5M (services/non-mfg), $7M (manufacturing)
+  Synopsis Required: $25,000 — SAM.gov posting required above
+  Congressional Notification: $4,500,000
 
 SPECIALIST PERSPECTIVES — Apply these lenses when reviewing acquisitions:
 
@@ -357,9 +407,13 @@ browse: After searches complete, examine full content from URLs. Browse at least
 think: Extended reasoning for complex analysis. Include the COMPLETE information that needs processing.
 code: Run JavaScript or HTML for calculations, analysis, or visualizations.
 
+## Knowledge Base Tools (USE THESE FIRST for policy, regulatory, and case law questions)
+knowledge_search: Search the EAGLE knowledge base by agent, keyword, and topic. The KB contains 256 documents organized by agent specialization (compliance-strategist, financial-advisor, legal-counselor, market-intelligence, technical-translator, public-interest-guardian, supervisor-core, shared). Returns document keys for fetching. ALWAYS search the KB before answering questions about thresholds, GAO cases, appropriations law, NIH policies, or FAR guidance.
+knowledge_fetch: Fetch full text of a KB document using the s3_key from knowledge_search results. Returns up to 50KB of document content. Use this to get actual document text for detailed answers.
+
 ## Acquisition Tools
-search_far: Search the FAR/DFARS/HHSAR database by keyword. Returns relevant sections sorted by relevance. Use for regulatory questions, clause identification, and compliance guidance.
-query_compliance_matrix: Deterministic compliance analysis. Operations: “query” (full analysis with contract_value, acquisition_method, contract_type, and flags), “list_methods”, “list_types”, “list_thresholds”, “suggest_vehicle”. Returns required documents, compliance items, competition rules, thresholds, timeline, approvals.
+search_far: Search the FAR/DFARS/HHSAR database by keyword. Returns relevant sections sorted by relevance.
+query_compliance_matrix: Deterministic compliance analysis. Operations: “query” (full analysis with contract_value, acquisition_method, contract_type, and flags), “list_methods”, “list_types”, “list_thresholds”, “suggest_vehicle”.
 plugin_data: Load NCI document templates (SOW, IGCE, Acquisition Plan, J&A, Market Research) from templates/ directory.
 docxTemplate: Fill DOCX document templates with content using text or index-based replacements.
 data: Access files from S3 buckets for analysis.
