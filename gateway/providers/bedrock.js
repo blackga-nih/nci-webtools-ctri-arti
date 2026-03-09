@@ -4,6 +4,8 @@ import {
   ConverseStreamCommand,
 } from "@aws-sdk/client-bedrock-runtime";
 
+import { logConverse, logConverseStream } from "../cloudwatch-logger.js";
+
 /* Example Usage: ConverseCommand
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime"; // ES Modules import
 // const { BedrockRuntimeClient, ConverseCommand } = require("@aws-sdk/client-bedrock-runtime"); // CommonJS import
@@ -1179,17 +1181,49 @@ export default class BedrockProvider {
    * @returns {Promise<import("@aws-sdk/client-bedrock-runtime").ConverseCommandOutput>} The full response from the Bedrock Converse API.
    */
   async converse(input) {
+    const start = Date.now();
     const command = new ConverseCommand(input);
-    return await this.client.send(command);
+    const response = await this.client.send(command);
+    logConverse(input, response, Date.now() - start);
+    return response;
   }
 
   /**
    * Sends a streaming Converse request to AWS Bedrock.
+   * Wraps the response stream to capture usage metadata for CloudWatch logging.
    * @param {import("@aws-sdk/client-bedrock-runtime").ConverseCommandInput} input - The Bedrock ConverseRequest payload.
    * @returns {AsyncGenerator<import("@aws-sdk/client-bedrock-runtime").ConverseStreamOutput>} An async generator yielding Bedrock ConverseStreamOutput events.
    */
   async converseStream(input) {
+    const start = Date.now();
     const command = new ConverseStreamCommand(input);
-    return await this.client.send(command);
+    const response = await this.client.send(command);
+
+    // Wrap the stream to capture metadata events before logging
+    const originalStream = response.stream;
+    const streamResult = { usage: null, stopReason: null, chunkCount: 0, toolsInvoked: [] };
+    let currentToolName = null;
+
+    response.stream = (async function* () {
+      for await (const event of originalStream) {
+        streamResult.chunkCount++;
+        if (event.metadata?.usage) {
+          streamResult.usage = event.metadata.usage;
+        }
+        if (event.messageStop?.stopReason) {
+          streamResult.stopReason = event.messageStop.stopReason;
+        }
+        // Capture tool use starts
+        if (event.contentBlockStart?.start?.toolUse) {
+          const tu = event.contentBlockStart.start.toolUse;
+          currentToolName = tu.name;
+          streamResult.toolsInvoked.push({ name: tu.name, toolUseId: tu.toolUseId });
+        }
+        yield event;
+      }
+      logConverseStream(input, streamResult, Date.now() - start);
+    })();
+
+    return response;
   }
 }
