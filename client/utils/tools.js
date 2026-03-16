@@ -27,6 +27,8 @@ export async function runTool(
     query_compliance_matrix,
     knowledge_search,
     knowledge_fetch,
+    create_document,
+    manage_package,
   }
 ) {
   let { toolUseId, name, input } = toolUse;
@@ -359,6 +361,69 @@ export async function plugin_data({ path }) {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("json")) return await response.json();
   return { content: await response.text() };
+}
+
+/**
+ * Generate and save an acquisition document via the server-side template engine.
+ * @param {object} params
+ * @param {string} [params.package_id] - Package ID
+ * @param {string} params.doc_type - Document type (sow, igce, etc.)
+ * @param {string} params.title - Document title
+ * @param {object} params.data - Template field values
+ * @returns {Promise<object>} - Document metadata with download URL
+ */
+export async function create_document({ package_id, doc_type, title, data }) {
+  const response = await fetch("/api/v1/documents/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ package_id, doc_type, title, data }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Document generation failed (${response.status})`);
+  }
+  return await response.json();
+}
+
+/**
+ * Create or query an acquisition package.
+ * @param {object} params
+ * @param {string} params.operation - create | status | checklist
+ * @returns {Promise<object>} - Package data or checklist
+ */
+export async function manage_package(params) {
+  const { operation, package_id, ...createData } = params;
+
+  if (operation === "create") {
+    const response = await fetch("/api/v1/packages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: createData.title,
+        estimatedValue: createData.estimated_value,
+        requirementDescription: createData.requirement_description,
+        acquisitionMethod: createData.acquisition_method,
+        contractType: createData.contract_type,
+        flags: createData.flags,
+      }),
+    });
+    if (!response.ok) throw new Error(`Package create failed (${response.status})`);
+    return await response.json();
+  }
+
+  if (operation === "status") {
+    const response = await fetch(`/api/v1/packages/${encodeURIComponent(package_id)}`);
+    if (!response.ok) throw new Error(`Package not found (${response.status})`);
+    return await response.json();
+  }
+
+  if (operation === "checklist") {
+    const response = await fetch(`/api/v1/packages/${encodeURIComponent(package_id)}/checklist`);
+    if (!response.ok) throw new Error(`Package not found (${response.status})`);
+    return await response.json();
+  }
+
+  throw new Error(`Unknown operation: ${operation}`);
 }
 
 const _loadedSkills = new Set();

@@ -87,6 +87,8 @@ export const {
   AgentTool,
   Usage,
   Session,
+  Package,
+  PackageDocument,
 } = schema;
 
 /**

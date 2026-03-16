@@ -1,6 +1,14 @@
 import { execSync } from "child_process";
+import { createHash } from "crypto";
 
-import { S3Client, GetObjectCommand, paginateListObjectsV2 } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  paginateListObjectsV2,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function createS3Client() {
   const profile = process.env.AWS_PROFILE;
@@ -41,4 +49,32 @@ export async function getFile(bucket, key) {
   const client = createS3Client();
   const command = new GetObjectCommand({ Bucket: bucket, Key: key });
   return await client.send(command);
+}
+
+export async function putFile(bucket, key, body, contentType = "application/octet-stream") {
+  const client = createS3Client();
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: typeof body === "string" ? Buffer.from(body, "utf-8") : body,
+    ContentType: contentType,
+  });
+  await client.send(command);
+  const hash = createHash("sha256")
+    .update(typeof body === "string" ? body : Buffer.from(body))
+    .digest("hex");
+  return { bucket, key, contentHash: hash };
+}
+
+export async function deleteFile(bucket, key) {
+  const client = createS3Client();
+  const command = new DeleteObjectCommand({ Bucket: bucket, Key: key });
+  await client.send(command);
+  return { bucket, key, deleted: true };
+}
+
+export async function getPresignedUrl(bucket, key, expiresIn = 900) {
+  const client = createS3Client();
+  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  return await getSignedUrl(client, command, { expiresIn });
 }

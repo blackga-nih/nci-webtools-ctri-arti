@@ -412,51 +412,60 @@ Would you like me to help draft the Statement of Work first?"
 
 ---
 
+## CRITICAL: Package Persistence
+
+After completing Phase 3 (Pathway Determination), you MUST call `manage_package` to persist the package:
+
+```
+manage_package({
+  operation: "create",
+  title: "Descriptive package title",
+  estimated_value: 750000,
+  requirement_description: "Brief description of what is being acquired",
+  acquisition_method: "negotiated",   // micro, sap, negotiated, sole, fss, idiq, etc.
+  contract_type: "ffp",               // ffp, cpff, tm, etc.
+  flags: { is_it: true, is_services: true }
+})
+```
+
+This creates the package in the database, auto-determines the pathway (micro_purchase, simplified, full_competition, sole_source), and identifies required documents. The returned `package_id` is used for all subsequent document generation.
+
+After creating the package, present the checklist to the user and ask which document to generate first.
+
+---
+
 ## Integration with Other Skills
 
 ### → Document Generator
 
-When user is ready to create documents, hand off with context:
+When user is ready to create documents, use `create_document` with the `package_id` from intake:
 
-```json
-{
-  "skill": "document-generator",
-  "document_type": "sow",
-  "context": {
-    "title": "Illumina NextSeq 2000 Sequencer",
-    "description": "Genomics research equipment...",
-    "period_of_performance": "March 2026",
-    "estimated_value": 85000
+```
+create_document({
+  package_id: "pkg-abc123",
+  doc_type: "sow",
+  title: "Cloud Hosting Services SOW",
+  data: {
+    TITLE: "Cloud Hosting Services",
+    REQUIREMENT_DESCRIPTION: "...",
+    BACKGROUND_CONTEXT: "...",
+    ...
   }
-}
+})
 ```
 
 ### → Compliance
 
-When user asks regulatory questions:
+When user asks regulatory questions, load the compliance skill:
 
-```json
-{
-  "skill": "compliance",
-  "query": "sole source justification requirements",
-  "context": {
-    "acquisition_type": "Simplified Acquisition",
-    "sole_source_reason": "proprietary equipment"
-  }
-}
+```
+load_skill({ name: "compliance" })
 ```
 
 ### → Knowledge Retrieval
 
 When user needs to search for precedents or policies:
 
-```json
-{
-  "skill": "knowledge-retrieval",
-  "query": "similar acquisitions for genomics equipment",
-  "context": {
-    "equipment_type": "sequencer",
-    "value_range": "$50K-$150K"
-  }
-}
+```
+knowledge_search({ keyword: "genomics equipment", agent: "market-intelligence" })
 ```

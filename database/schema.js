@@ -325,6 +325,53 @@ export const AgentTool = pgTable(
   (t) => [uniqueIndex("AgentTool_toolID_agentID_idx").on(t.toolID, t.agentID)]
 );
 
+export const Package = pgTable(
+  "Package",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    estimatedValue: integer("estimatedValue"),
+    requirementDescription: text("requirementDescription"),
+    acquisitionMethod: text("acquisitionMethod"),
+    contractType: text("contractType"),
+    pathway: text("pathway"),
+    requiredDocuments: json("requiredDocuments").default([]),
+    status: text("status").default("intake"),
+    flags: json("flags").default({}),
+    conversationId: integer("conversationId"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index("Package_conversationId_idx").on(t.conversationId),
+    index("Package_status_idx").on(t.status),
+  ]
+);
+
+export const PackageDocument = pgTable(
+  "PackageDocument",
+  {
+    id: text("id").primaryKey(),
+    packageId: text("packageId")
+      .notNull()
+      .references(() => Package.id, { onDelete: "cascade" }),
+    docType: text("docType").notNull(),
+    version: integer("version").default(1),
+    s3Key: text("s3Key"),
+    contentHash: text("contentHash"),
+    status: text("status").default("draft"),
+    title: text("title"),
+    fileType: text("fileType").default("md"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("PackageDocument_packageId_idx").on(t.packageId),
+    index("PackageDocument_docType_idx").on(t.packageId, t.docType),
+  ]
+);
+
 export const Session = pgTable(
   "session",
   {
@@ -442,6 +489,14 @@ export const agentToolRelations = relations(AgentTool, ({ one }) => ({
   Tool: one(Tool, { fields: [AgentTool.toolID], references: [Tool.id] }),
 }));
 
+export const packageRelations = relations(Package, ({ many }) => ({
+  Documents: many(PackageDocument),
+}));
+
+export const packageDocumentRelations = relations(PackageDocument, ({ one }) => ({
+  Package: one(Package, { fields: [PackageDocument.packageId], references: [Package.id] }),
+}));
+
 // ===== All tables (for iteration) =====
 
 export const tables = {
@@ -462,6 +517,8 @@ export const tables = {
   UserAgent,
   UserTool,
   AgentTool,
+  Package,
+  PackageDocument,
 };
 
 // ===== Seed database =====

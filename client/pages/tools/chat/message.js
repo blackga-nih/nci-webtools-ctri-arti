@@ -6,9 +6,11 @@ import { AlertContainer } from "../../../components/alert.js";
 import BrowseTool from "../../../components/chat-tools/browse-tool.js";
 import CodeTool from "../../../components/chat-tools/code-tool.js";
 import ComplianceTool from "../../../components/chat-tools/compliance-tool.js";
+import DocumentTool from "../../../components/chat-tools/document-tool.js";
 import EditorTool from "../../../components/chat-tools/editor-tool.js";
 import KnowledgeTool from "../../../components/chat-tools/knowledge-tool.js";
 import LoadSkillTool from "../../../components/chat-tools/load-skill-tool.js";
+import PackageTool from "../../../components/chat-tools/package-tool.js";
 import ReasoningTool from "../../../components/chat-tools/reasoning-tool.js";
 import SearchTool from "../../../components/chat-tools/search-tool.js";
 import TextContent from "../../../components/chat-tools/text-content.js";
@@ -25,6 +27,8 @@ const TOOL_COMPONENTS = {
   knowledge_fetch: KnowledgeTool,
   search_far: ComplianceTool,
   query_compliance_matrix: ComplianceTool,
+  create_document: DocumentTool,
+  manage_package: PackageTool,
 };
 
 export default function Message(p) {

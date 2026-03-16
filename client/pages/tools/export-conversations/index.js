@@ -655,31 +655,35 @@ export default function ExportConversations() {
 
     setExporting(true);
     try {
-      const convIdMap = new Map();
-      convs.forEach((conv, i) => convIdMap.set(conv.id, i + 1));
-
-      const allMessages = [];
+      const exportData = [];
       for (const conv of convs) {
         const msgs = await database.db.getAllFromIndex("messages", "conversationId", conv.id);
         const sorted = msgs.sort((a, b) =>
           (a.timestamp || a.created || "").localeCompare(b.timestamp || b.created || "")
         );
-        allMessages.push(...sorted);
+        exportData.push({
+          id: conv.id,
+          title: conv.title || null,
+          projectId: conv.projectId || null,
+          created: conv.created || null,
+          updated: conv.updated || null,
+          lastMessageAt: conv.lastMessageAt || null,
+          messageCount: conv.messageCount || 0,
+          messages: sorted.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp || m.created || null,
+          })),
+        });
       }
 
-      const userID = user()?.id || "";
-      const convCsv = buildConversationsCsv(convs, convIdMap, userID);
-      const msgCsv = buildMessagesCsv(allMessages, convIdMap);
-
-      const zip = new JSZip();
-      zip.file("Conversation.csv", convCsv);
-      zip.file("Message.csv", msgCsv);
-
-      const blob = await zip.generateAsync({ type: "blob" });
+      const json = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `chat-v1-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -709,7 +713,7 @@ export default function ExportConversations() {
           </div>
           <div class="export-hero-step">
             <span class="export-step-num">2</span>
-            <span>Click <strong>Export to Zip</strong> to download the archive</span>
+            <span>Click <strong>Export as JSON</strong> to download the conversation data</span>
           </div>
           <div class="export-hero-step">
             <span class="export-step-num">3</span>
@@ -800,7 +804,7 @@ export default function ExportConversations() {
               exporting()
                 ? "Exporting..."
                 : html`<span innerHTML=${DownloadIcon}></span> Export
-                    ${selectedConvs().length || ""} to Zip`}
+                    ${selectedConvs().length || ""} as JSON`}
           </button>
         </div>
       <//>

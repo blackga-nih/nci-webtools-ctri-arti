@@ -362,6 +362,79 @@ export const tools = [
       },
     },
   },
+  {
+    toolSpec: {
+      name: "create_document",
+      description:
+        "Generate and save an acquisition document to an S3-backed package. Renders a Handlebars template with the provided data fields, saves the result to S3, and tracks it in the package database. Returns a download URL and updated package checklist.\n\nTemplate fields vary by doc_type:\n- SOW: TITLE, REQUIREMENT_DESCRIPTION, BACKGROUND_CONTEXT, PURPOSE_STATEMENT, SCOPE_DESCRIPTION, BASE_PERIOD, TASK_1_TITLE, TASK_1_OBJECTIVE, TASK_1_REQUIREMENTS, DELIVERABLE_1, etc.\n- IGCE: TITLE, line items in data object\n- Market Research: TITLE, NAICS_CODE, DESCRIPTION_OF_NEED, vendors, vehicles\n- Acquisition Plan: TITLE, ESTIMATED_VALUE, statement of need, competition strategy\n- Justification: TITLE, ESTIMATED_VALUE, authority, proposed contractor, rationale",
+      inputSchema: {
+        json: {
+          type: "object",
+          properties: {
+            package_id: {
+              type: "string",
+              description: "Package ID to attach document to (from manage_package create)",
+            },
+            doc_type: {
+              type: "string",
+              enum: ["sow", "igce", "market_research", "acquisition_plan", "justification"],
+              description: "Type of acquisition document to generate",
+            },
+            title: {
+              type: "string",
+              description: "Document title (e.g. 'Cloud Hosting Services SOW')",
+            },
+            data: {
+              type: "object",
+              description:
+                "Template fields to populate. Keys should match Handlebars placeholders in the template (e.g. TITLE, REQUIREMENT_DESCRIPTION, BACKGROUND_CONTEXT, etc.). Any unmatched placeholders will remain as-is for manual completion.",
+            },
+          },
+          required: ["doc_type", "title", "data"],
+        },
+      },
+    },
+  },
+  {
+    toolSpec: {
+      name: "manage_package",
+      description:
+        "Create or query an acquisition package. Use 'create' after intake to persist the package with auto-determined pathway and required documents. Use 'status' to get full package details. Use 'checklist' to see document completion progress.",
+      inputSchema: {
+        json: {
+          type: "object",
+          properties: {
+            operation: {
+              type: "string",
+              enum: ["create", "status", "checklist"],
+              description: "Operation: create a new package, get status, or get checklist",
+            },
+            title: { type: "string", description: "Package title (for create)" },
+            estimated_value: { type: "number", description: "Estimated dollar value (for create)" },
+            requirement_description: {
+              type: "string",
+              description: "What is being acquired (for create)",
+            },
+            acquisition_method: {
+              type: "string",
+              description:
+                "Method ID: micro, sap, negotiated, fss, bpa-est, bpa-call, idiq, idiq-order, sole",
+            },
+            contract_type: {
+              type: "string",
+              description: "Type ID: ffp, fp-epa, fpi, cpff, cpif, cpaf, tm, lh",
+            },
+            flags: {
+              type: "object",
+              description: "Flags: is_it, is_services, is_small_business, is_rd, is_human_subjects",
+            },
+            package_id: { type: "string", description: "Package ID (for status/checklist)" },
+          },
+          required: ["operation"],
+        },
+      },
+    },
+  },
 ];
 
 export function systemPrompt(context) {
@@ -418,6 +491,10 @@ plugin_data: Load NCI document templates (SOW, IGCE, Acquisition Plan, J&A, Mark
 docxTemplate: Fill DOCX document templates with content using text or index-based replacements.
 data: Access files from S3 buckets for analysis.
 
+## Package & Document Tools
+manage_package: Create or query acquisition packages. Use operation “create” after intake to persist the package (auto-determines pathway and required documents). Use “status” to get package details. Use “checklist” to see document completion progress. ALWAYS create a package after completing intake before generating documents.
+create_document: Generate and save acquisition documents. Renders a Handlebars template with provided data, saves to S3, tracks in package database. Pass package_id from manage_package to link documents to the package. Returns download URL and updated checklist. ALWAYS use this tool instead of outputting document text directly in chat.
+
 ## Skills (Progressive Disclosure)
 load_skill: Load detailed instructions for specialized capabilities. Load the relevant skill FIRST when a user’s request matches, then follow its instructions. Skills are loaded once per conversation.
 
@@ -437,7 +514,27 @@ Available skills:
 editor: Manage workspace.txt to maintain context across conversations. Update with key findings, current projects, and important context shifts.
 
 TOOL USAGE GUIDANCE:
-For simple queries (FAR search, single question), respond directly using search_far or query_compliance_matrix. For full intake packages, use the five-phase workflow to ensure nothing is missed. Always use query_compliance_matrix to validate document requirements and thresholds before generating documents.
+
+CRITICAL — PACKAGE WORKFLOW: When a user wants to acquire something:
+1. Load the oa-intake skill and complete intake (collect requirements, cost, timeline)
+2. After determining pathway, call manage_package(operation: "create") to persist the package
+3. For each required document, call create_document() with the package_id — NEVER output raw document text in chat
+4. After all documents are generated, call manage_package(operation: "checklist") to show completion
+5. The user can download individual documents or export the full package as ZIP
+
+CRITICAL — load_skill FIRST: Before responding to ANY of these requests, you MUST call load_skill with the matching skill name:
+- Document generation (SOW, IGCE, Acquisition Plan, J&A, Market Research) → load_skill("document-generator")
+- Acquisition intake / new requirement / "I need to buy..." → load_skill("oa-intake")
+- Compliance questions, clause identification, contract vehicles → load_skill("compliance")
+- Legal risk, protest analysis, GAO cases, appropriations law → load_skill("legal-counsel")
+- Market research, vendor analysis, pricing, GSA schedules → load_skill("market-intelligence")
+- Technical specs, Section 508, evaluation criteria → load_skill("technical-review")
+- Policy/regulatory questions, FAR changes → load_skill("policy-research")
+Do NOT skip load_skill — it provides essential templates and workflow instructions that you need to give accurate, complete answers.
+
+For simple factual lookups (threshold values, single FAR citation), you may use search_far, query_compliance_matrix, or knowledge_search directly without loading a skill first.
+
+For full intake packages, use the five-phase workflow to ensure nothing is missed. Always use query_compliance_matrix to validate document requirements and thresholds before generating documents.
 
 When using search or browse tools, include markdown inline citations [(Author, Year)](url) and conclude researched responses with a References section.
 

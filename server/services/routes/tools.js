@@ -4,13 +4,15 @@ import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 import { json, Router } from "express";
+import JSZip from "jszip";
 
 import { executeOperation, searchFar } from "../compliance-matrix.js";
+import { generateDocument } from "../document-generator.js";
 import { sendFeedback, sendLogReport } from "../email.js";
 import { requireRole } from "../middleware.js";
 import { parseDocument } from "../parsers.js";
 import { proxyMiddleware } from "../proxy.js";
-import { getFile, listFiles } from "../s3.js";
+import { getFile, listFiles, putFile, deleteFile, getPresignedUrl } from "../s3.js";
 import { textract } from "../textract.js";
 import { getLanguages, translate } from "../translate.js";
 import { search } from "../utils.js";
@@ -222,6 +224,190 @@ api.get("/knowledge/fetch", requireRole(), async (req, res) => {
   } catch (err) {
     console.error("Knowledge fetch error:", err);
     res.status(404).json({ error: `Document not found: ${key}` });
+  }
+});
+
+// ── Package management endpoints ───────────────────────────────────
+
+import {
+  createPackage,
+  getPackage,
+  listPackages,
+  updatePackageStatus,
+  getPackageChecklist,
+} from "../packages.js";
+
+api.post("/packages", requireRole(), async (req, res) => {
+  try {
+    const pkg = await createPackage(req.body);
+    res.json(pkg);
+  } catch (err) {
+    console.error("Package create error:", err);
+    res.status(500).json({ error: "Failed to create package" });
+  }
+});
+
+api.get("/packages", requireRole(), async (req, res) => {
+  try {
+    const pkgs = await listPackages(
+      req.query.conversation_id ? Number(req.query.conversation_id) : undefined
+    );
+    res.json(pkgs);
+  } catch (err) {
+    console.error("Package list error:", err);
+    res.status(500).json({ error: "Failed to list packages" });
+  }
+});
+
+api.get("/packages/:id", requireRole(), async (req, res) => {
+  try {
+    const pkg = await getPackage(req.params.id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    res.json(pkg);
+  } catch (err) {
+    console.error("Package get error:", err);
+    res.status(500).json({ error: "Failed to get package" });
+  }
+});
+
+api.get("/packages/:id/checklist", requireRole(), async (req, res) => {
+  try {
+    const checklist = await getPackageChecklist(req.params.id);
+    if (!checklist) return res.status(404).json({ error: "Package not found" });
+    res.json(checklist);
+  } catch (err) {
+    console.error("Checklist error:", err);
+    res.status(500).json({ error: "Failed to get checklist" });
+  }
+});
+
+api.patch("/packages/:id/status", requireRole(), async (req, res) => {
+  try {
+    const pkg = await updatePackageStatus(req.params.id, req.body.status);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    res.json(pkg);
+  } catch (err) {
+    console.error("Package status update error:", err);
+    res.status(500).json({ error: "Failed to update package status" });
+  }
+});
+
+api.get("/packages/:id/export", requireRole(), async (req, res) => {
+  try {
+    const pkg = await getPackage(req.params.id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    if (!pkg.documents?.length) {
+      return res.status(400).json({ error: "No documents to export" });
+    }
+
+    const zip = new JSZip();
+
+    // Add manifest
+    zip.file(
+      "manifest.json",
+      JSON.stringify(
+        {
+          packageId: pkg.id,
+          title: pkg.title,
+          pathway: pkg.pathway,
+          estimatedValue: pkg.estimatedValue,
+          status: pkg.status,
+          documents: pkg.documents.map((d) => ({
+            docType: d.docType,
+            title: d.title,
+            version: d.version,
+            fileType: d.fileType,
+          })),
+          exportedAt: new Date().toISOString(),
+        },
+        null,
+        2
+      )
+    );
+
+    // Fetch each document from S3 and add to ZIP
+    for (const doc of pkg.documents) {
+      if (!doc.s3Key) continue;
+      try {
+        const s3Data = await getFile(KB_BUCKET, doc.s3Key);
+        const chunks = [];
+        for await (const chunk of s3Data.Body) {
+          chunks.push(chunk);
+        }
+        const content = Buffer.concat(chunks);
+        const filename = `${doc.docType}/${doc.title || doc.docType}.${doc.fileType || "md"}`;
+        zip.file(filename, content);
+      } catch (err) {
+        console.error(`Failed to fetch doc ${doc.s3Key}:`, err);
+        zip.file(`${doc.docType}/ERROR.txt`, `Failed to fetch: ${doc.s3Key}`);
+      }
+    }
+
+    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+    const safeName = pkg.title.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}-package.zip"`);
+    res.send(zipBuffer);
+  } catch (err) {
+    console.error("Package export error:", err);
+    res.status(500).json({ error: "Failed to export package" });
+  }
+});
+
+// Document generation — render templates, save to S3, track in DB
+
+api.post("/documents/generate", requireRole(), async (req, res) => {
+  const { package_id, doc_type, title, data } = req.body;
+  if (!doc_type || !title || !data) {
+    return res.status(400).json({ error: "doc_type, title, and data are required" });
+  }
+  try {
+    const result = await generateDocument({
+      packageId: package_id,
+      docType: doc_type,
+      title,
+      data,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("Document generation error:", err);
+    res.status(500).json({ error: err.message || "Failed to generate document" });
+  }
+});
+
+// Document storage — save and retrieve documents from S3
+api.post("/documents/save", requireRole(), async (req, res) => {
+  const { bucket, key, content, contentType } = req.body;
+  if (!S3_BUCKETS?.split(",").includes(bucket)) {
+    return res.status(400).json({ error: "Invalid bucket" });
+  }
+  if (!key || !content) {
+    return res.status(400).json({ error: "key and content are required" });
+  }
+  try {
+    const result = await putFile(bucket, key, content, contentType || "text/markdown");
+    const url = await getPresignedUrl(bucket, key);
+    res.json({ ...result, url });
+  } catch (err) {
+    console.error("Document save error:", err);
+    res.status(500).json({ error: "Failed to save document" });
+  }
+});
+
+api.get("/documents/download-url", requireRole(), async (req, res) => {
+  const { bucket, key } = req.query;
+  if (!S3_BUCKETS?.split(",").includes(bucket)) {
+    return res.status(400).json({ error: "Invalid bucket" });
+  }
+  if (!key) {
+    return res.status(400).json({ error: "key is required" });
+  }
+  try {
+    const url = await getPresignedUrl(bucket, key, 900);
+    res.json({ url, expiresIn: 900 });
+  } catch (err) {
+    console.error("Presigned URL error:", err);
+    res.status(500).json({ error: "Failed to generate download URL" });
   }
 });
 

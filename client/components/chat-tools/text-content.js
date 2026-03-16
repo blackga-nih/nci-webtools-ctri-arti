@@ -3,7 +3,6 @@ import { marked } from "marked";
 import { Show } from "solid-js";
 import html from "solid-js/html";
 
-
 import { downloadCsv } from "../../utils/files.js";
 import Tooltip from "../tooltip.js";
 
@@ -97,7 +96,7 @@ export default function TextContent(props) {
             </button>
           <//>
           <${Tooltip}
-            title="Export the entire conversation as CSV file"
+            title="Export the entire conversation as JSON"
             placement="top"
             arrow=${true}
             class="text-white bg-primary"
@@ -105,19 +104,21 @@ export default function TextContent(props) {
             <button
               type="button"
               class="btn btn-sm btn-outline-light border-0"
-              title="Export the entire conversation as CSV file"
-              onClick=${() =>
-                downloadCsv(
-                  "conversation.csv",
-                  props.messages.map((m) => ({
-                    role: m.role,
-                    content: m.content
-                      ?.map((c) => c?.text)
-                      .filter(Boolean)
-                      .map((e) => e.trim())
-                      .join("\n"),
-                  }))
-                )}
+              title="Export the entire conversation as JSON"
+              onClick=${() => {
+                const data = props.messages.map((m) => ({
+                  role: m.role,
+                  content: m.content,
+                }));
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "conversation.json";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
             >
               <${Download} size="16" color="black" />
             </button>
