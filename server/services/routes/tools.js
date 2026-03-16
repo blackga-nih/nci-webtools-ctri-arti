@@ -450,6 +450,39 @@ api.get("/skills", requireRole(), async (req, res) => {
   }
 });
 
+// List available templates with metadata
+api.get("/templates", requireRole(), async (req, res) => {
+  const templatesDir = join(PLUGIN_PATH, "data", "templates");
+  try {
+    const files = await readdir(templatesDir);
+    const templates = await Promise.all(
+      files
+        .filter((f) => f.endsWith(".md"))
+        .map(async (f) => {
+          try {
+            const content = await readFile(join(templatesDir, f), "utf-8");
+            const lines = content.split("\n").slice(0, 10);
+            const titleLine = lines.find((l) => l.startsWith("# "));
+            const name = f.replace(/\.md$/, "");
+            const docType = name.replace(/-template$/, "");
+            return {
+              name,
+              filename: f,
+              title: titleLine ? titleLine.replace(/^#\s+/, "") : name,
+              docType,
+              preview: content.substring(0, 500),
+            };
+          } catch {
+            return null;
+          }
+        })
+    );
+    res.json(templates.filter(Boolean));
+  } catch {
+    res.json([]);
+  }
+});
+
 // Compliance matrix — server-side deterministic analysis
 api.post("/compliance", requireRole(), (req, res) => {
   res.json(executeOperation(req.body));

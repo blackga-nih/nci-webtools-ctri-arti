@@ -372,6 +372,47 @@ export const PackageDocument = pgTable(
   ]
 );
 
+export const Trace = pgTable(
+  "Trace",
+  {
+    id: serial("id").primaryKey(),
+    traceId: text("traceId").unique(),
+    userID: integer("userID"),
+    conversationID: text("conversationID"),
+    durationMs: integer("durationMs"),
+    inputTokens: integer("inputTokens"),
+    outputTokens: integer("outputTokens"),
+    cost: doublePrecision("cost"),
+    status: text("status"),
+    toolsCalled: json("toolsCalled"),
+    spans: json("spans"),
+    traceJson: json("traceJson"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("Trace_userID_idx").on(t.userID),
+    index("Trace_conversationID_idx").on(t.conversationID),
+    index("Trace_createdAt_idx").on(t.createdAt),
+  ]
+);
+
+export const RequestLog = pgTable(
+  "RequestLog",
+  {
+    id: serial("id").primaryKey(),
+    userID: integer("userID"),
+    method: text("method"),
+    path: text("path"),
+    statusCode: integer("statusCode"),
+    durationMs: integer("durationMs"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("RequestLog_path_idx").on(t.path),
+    index("RequestLog_createdAt_idx").on(t.createdAt),
+  ]
+);
+
 export const Session = pgTable(
   "session",
   {
@@ -489,6 +530,10 @@ export const agentToolRelations = relations(AgentTool, ({ one }) => ({
   Tool: one(Tool, { fields: [AgentTool.toolID], references: [Tool.id] }),
 }));
 
+export const traceRelations = relations(Trace, ({ one }) => ({
+  User: one(User, { fields: [Trace.userID], references: [User.id] }),
+}));
+
 export const packageRelations = relations(Package, ({ many }) => ({
   Documents: many(PackageDocument),
 }));
@@ -519,6 +564,8 @@ export const tables = {
   AgentTool,
   Package,
   PackageDocument,
+  Trace,
+  RequestLog,
 };
 
 // ===== Seed database =====

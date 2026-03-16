@@ -50,6 +50,20 @@
       "when": 1773691336657,
       "tag": "0006_long_lionheart",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773936000000,
+      "tag": "0007_traces",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773697744573,
+      "tag": "0008_clammy_gateway",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,19 @@
-import db, { Model, Role, Usage, User } from "database";
+import db, { Model, Package, RequestLog, Role, Trace, Usage, User } from "database";
 
-import { eq, and, or, between, like, sql, sum, count, countDistinct, asc, desc } from "drizzle-orm";
+import {
+  eq,
+  and,
+  or,
+  between,
+  like,
+  sql,
+  sum,
+  count,
+  countDistinct,
+  avg,
+  asc,
+  desc,
+} from "drizzle-orm";
 import { Router } from "express";
 
 import { requireRole } from "../middleware.js";
@@ -497,6 +510,239 @@ api.get(
       .orderBy(desc(groupCol));
 
     res.json({ data, meta: { groupBy } });
+  })
+);
+
+// ===== Admin Dashboard =====
+
+api.get(
+  "/admin/dashboard",
+  requireRole("admin"),
+  routeHandler(async (req, res) => {
+    const [{ value: userCount }] = await db.select({ value: count() }).from(User);
+    const [{ value: packageCount }] = await db.select({ value: count() }).from(Package);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [usageSummary] = await db
+      .select({
+        totalCost: sum(Usage.cost),
+        totalRequests: count(),
+        totalInputTokens: sum(Usage.inputTokens),
+        totalOutputTokens: sum(Usage.outputTokens),
+      })
+      .from(Usage)
+      .where(between(Usage.createdAt, thirtyDaysAgo, new Date()));
+
+    const [{ value: activeUsers }] = await db
+      .select({ value: countDistinct(Usage.userID) })
+      .from(Usage)
+      .where(between(Usage.createdAt, thirtyDaysAgo, new Date()));
+
+    res.json({
+      users: userCount,
+      packages: packageCount,
+      activeUsers,
+      totalCost: parseFloat(Number(usageSummary?.totalCost || 0).toFixed(4)),
+      totalRequests: usageSummary?.totalRequests || 0,
+      totalInputTokens: Math.round(Number(usageSummary?.totalInputTokens || 0)),
+      totalOutputTokens: Math.round(Number(usageSummary?.totalOutputTokens || 0)),
+    });
+  })
+);
+
+// ===== Traces =====
+
+api.get(
+  "/admin/traces",
+  requireRole("admin"),
+  routeHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const [{ value: total }] = await db.select({ value: count() }).from(Trace);
+
+    const rows = await db.query.Trace.findMany({
+      orderBy: desc(Trace.createdAt),
+      limit,
+      offset,
+      columns: {
+        id: true,
+        traceId: true,
+        userID: true,
+        status: true,
+        durationMs: true,
+        inputTokens: true,
+        outputTokens: true,
+        cost: true,
+        toolsCalled: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ data: rows, meta: { total, limit, offset } });
+  })
+);
+
+api.get(
+  "/admin/traces/:traceId",
+  requireRole("admin"),
+  routeHandler(async (req, res) => {
+    const trace = await db.query.Trace.findFirst({
+      where: eq(Trace.traceId, req.params.traceId),
+    });
+    if (!trace) return res.status(404).json({ error: "Trace not found" });
+    res.json(trace);
+  })
+);
+
+// ===== Costs =====
+
+api.get(
+  "/admin/costs",
+  requireRole("admin"),
+  routeHandler(async (req, res) => {
+    const days = parseInt(req.query.days) || 30;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const where = between(Usage.createdAt, since, new Date());
+
+    const [summary] = await db
+      .select({
+        totalCost: sum(Usage.cost),
+        totalRequests: count(),
+        totalInputTokens: sum(Usage.inputTokens),
+        totalOutputTokens: sum(Usage.outputTokens),
+        activeUsers: countDistinct(Usage.userID),
+      })
+      .from(Usage)
+      .where(where);
+
+    const avgCost =
+      summary?.totalRequests > 0
+        ? parseFloat((Number(summary.totalCost || 0) / summary.totalRequests).toFixed(6))
+        : 0;
+
+    const [{ value: total }] = await db.select({ value: count() }).from(Usage).where(where);
+
+    const rows = await db.query.Usage.findMany({
+      where,
+      with: {
+        Model: { columns: { id: true, name: true } },
+        User: { columns: { id: true, email: true, firstName: true, lastName: true } },
+      },
+      orderBy: desc(Usage.createdAt),
+      limit,
+      offset,
+    });
+
+    res.json({
+      summary: {
+        totalCost: parseFloat(Number(summary?.totalCost || 0).toFixed(4)),
+        avgCostPerRequest: avgCost,
+        totalTokens:
+          Math.round(Number(summary?.totalInputTokens || 0)) +
+          Math.round(Number(summary?.totalOutputTokens || 0)),
+        activeUsers: summary?.activeUsers || 0,
+        totalRequests: summary?.totalRequests || 0,
+      },
+      data: rows.map((u) => ({
+        id: u.id,
+        userEmail: u.User?.email,
+        userName: [u.User?.firstName, u.User?.lastName].filter(Boolean).join(" "),
+        modelName: u.Model?.name,
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+        cost: u.cost,
+        createdAt: u.createdAt,
+      })),
+      meta: { total, limit, offset, days },
+    });
+  })
+);
+
+// ===== Request Log =====
+
+api.get(
+  "/admin/request-log",
+  requireRole("admin"),
+  routeHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const category = req.query.category;
+
+    const conditions = [];
+    if (category && category !== "all") {
+      const categoryPrefixes = {
+        chat: "/api/v1/model",
+        documents: "/api/v1/documents",
+        packages: "/api/v1/packages",
+        admin: "/api/v1/admin",
+      };
+      const prefix = categoryPrefixes[category];
+      if (prefix) conditions.push(like(RequestLog.path, `${prefix}%`));
+    }
+
+    const where = conditions.length ? and(...conditions) : undefined;
+
+    // Summary stats
+    const [summary] = await db
+      .select({
+        totalRequests: count(),
+        avgResponseTime: avg(RequestLog.durationMs),
+        errorCount: count(sql`CASE WHEN ${RequestLog.statusCode} >= 400 THEN 1 END`),
+        uniqueRoutes: countDistinct(RequestLog.path),
+      })
+      .from(RequestLog)
+      .where(where);
+
+    // Route aggregates
+    const routeStats = await db
+      .select({
+        path: RequestLog.path,
+        method: RequestLog.method,
+        calls: count(),
+        avgMs: avg(RequestLog.durationMs),
+        errors: count(sql`CASE WHEN ${RequestLog.statusCode} >= 400 THEN 1 END`),
+      })
+      .from(RequestLog)
+      .where(where)
+      .groupBy(RequestLog.path, RequestLog.method)
+      .orderBy(desc(count()))
+      .limit(20);
+
+    // Recent requests
+    const [{ value: total }] = await db.select({ value: count() }).from(RequestLog).where(where);
+
+    const recent = await db
+      .select()
+      .from(RequestLog)
+      .where(where)
+      .orderBy(desc(RequestLog.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json({
+      summary: {
+        totalRequests: summary?.totalRequests || 0,
+        avgResponseTime: Math.round(Number(summary?.avgResponseTime || 0)),
+        errors: summary?.errorCount || 0,
+        uniqueRoutes: summary?.uniqueRoutes || 0,
+      },
+      routeStats: routeStats.map((r) => ({
+        path: r.path,
+        method: r.method,
+        calls: r.calls,
+        avgMs: Math.round(Number(r.avgMs || 0)),
+        errors: r.errors,
+      })),
+      recent,
+      meta: { total, limit, offset },
+    });
   })
 );
 

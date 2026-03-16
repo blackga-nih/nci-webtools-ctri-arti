@@ -1,4 +1,4 @@
-import db, { Role, User } from "database";
+import db, { RequestLog, Role, User } from "database";
 
 import { eq } from "drizzle-orm";
 import Provider from "oidc-provider";
@@ -147,6 +147,50 @@ export function oauthMiddleware() {
   });
   provider.proxy = true;
   return provider.callback();
+}
+
+/**
+ * Request logging middleware — records HTTP requests into RequestLog table.
+ * Fire-and-forget: does not block the response.
+ */
+export function requestLogger() {
+  const SKIP_PREFIXES = ["/api/v1/status", "/api/status"];
+  const SKIP_EXTENSIONS = [
+    ".js",
+    ".css",
+    ".png",
+    ".jpg",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".map",
+  ];
+
+  return (req, res, next) => {
+    // Skip static files and health checks
+    // Use originalUrl for full path (req.path is relative inside mounted routers)
+    const fullPath = req.originalUrl?.split("?")[0] || req.path;
+    const path = req.path;
+    if (SKIP_PREFIXES.some((p) => fullPath === p || path === p)) return next();
+    if (SKIP_EXTENSIONS.some((ext) => fullPath.endsWith(ext))) return next();
+
+    const start = Date.now();
+    res.on("finish", () => {
+      const durationMs = Date.now() - start;
+      const userID = req.session?.user?.id || null;
+      db.insert(RequestLog)
+        .values({
+          userID,
+          method: req.method,
+          path: fullPath,
+          statusCode: res.statusCode,
+          durationMs,
+        })
+        .catch(() => {}); // fire-and-forget
+    });
+    next();
+  };
 }
 
 /**

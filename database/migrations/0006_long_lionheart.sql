@@ -1,4 +1,4 @@
-CREATE TABLE "Package" (
+CREATE TABLE IF NOT EXISTS "Package" (
 	"id" text PRIMARY KEY NOT NULL,
 	"title" text NOT NULL,
 	"estimatedValue" integer,
@@ -14,7 +14,7 @@ CREATE TABLE "Package" (
 	"updatedAt" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "PackageDocument" (
+CREATE TABLE IF NOT EXISTS "PackageDocument" (
 	"id" text PRIMARY KEY NOT NULL,
 	"packageId" text NOT NULL,
 	"docType" text NOT NULL,
@@ -27,8 +27,11 @@ CREATE TABLE "PackageDocument" (
 	"createdAt" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-ALTER TABLE "PackageDocument" ADD CONSTRAINT "PackageDocument_packageId_Package_id_fk" FOREIGN KEY ("packageId") REFERENCES "public"."Package"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "Package_conversationId_idx" ON "Package" USING btree ("conversationId");--> statement-breakpoint
-CREATE INDEX "Package_status_idx" ON "Package" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "PackageDocument_packageId_idx" ON "PackageDocument" USING btree ("packageId");--> statement-breakpoint
-CREATE INDEX "PackageDocument_docType_idx" ON "PackageDocument" USING btree ("packageId","docType");
+DO $$ BEGIN
+  ALTER TABLE "PackageDocument" ADD CONSTRAINT "PackageDocument_packageId_Package_id_fk" FOREIGN KEY ("packageId") REFERENCES "public"."Package"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "Package_conversationId_idx" ON "Package" USING btree ("conversationId");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "Package_status_idx" ON "Package" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "PackageDocument_packageId_idx" ON "PackageDocument" USING btree ("packageId");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "PackageDocument_docType_idx" ON "PackageDocument" USING btree ("packageId","docType");

@@ -17,7 +17,6 @@ import {
 } from "solid-js";
 import html from "solid-js/html";
 
-
 import { AlertContainer } from "../../../components/alert.js";
 import AttachmentsPreview from "../../../components/attachments-preview.js";
 import ClassToggle from "../../../components/class-toggle.js";
@@ -332,7 +331,9 @@ function ChatApp(props) {
         >
           <div class="d-flex flex-column p-3 position-sticky top-0 left-0 z-5 min-vh-100">
             <!-- Toggle Button -->
-            <div class="d-flex justify-content-end align-items-center gap-2 text-dark mb-3 fw-semibold">
+            <div
+              class="d-flex justify-content-end align-items-center gap-2 text-dark mb-3 fw-semibold"
+            >
               <${Tooltip}
                 title=${() => (toggles().conversations ? "Close Sidebar" : "Open Sidebar")}
                 placement="right"
@@ -346,14 +347,25 @@ function ChatApp(props) {
                 >
                   ${() =>
                     toggles().conversations
-                      ? html`<img src="assets/images/icon-panel-left-close.svg" alt="Close Sidebar" width="20" />`
-                      : html`<img src="assets/images/icon-panel-left-open.svg" alt="Open Sidebar" width="20" />`}
+                      ? html`<img
+                          src="assets/images/icon-panel-left-close.svg"
+                          alt="Close Sidebar"
+                          width="20"
+                        />`
+                      : html`<img
+                          src="assets/images/icon-panel-left-open.svg"
+                          alt="Open Sidebar"
+                          width="20"
+                        />`}
                 </button>
               <//>
             </div>
 
             <!-- New Chat Button -->
-            <div class="d-flex align-items-center gap-2 link-primary text-decoration-none mb-3 fw-semibold" title="New Chat">
+            <div
+              class="d-flex align-items-center gap-2 link-primary text-decoration-none mb-3 fw-semibold"
+              title="New Chat"
+            >
               <a
                 href=${() => `/tools/chat-v2?agentId=${params.agentId || 1}`}
                 target="_self"
@@ -363,7 +375,12 @@ function ChatApp(props) {
               </a>
               <${Show} when=${() => toggles().conversations}>
                 <${ClassToggle} class="dropdown d-flex-center" activeClass="show" event="hover">
-                  <a toggle href=${() => `/tools/chat-v2?agentId=${params.agentId || 1}`} target="_self" class="btn btn-sm p-0 dropdown-toggle">
+                  <a
+                    toggle
+                    href=${() => `/tools/chat-v2?agentId=${params.agentId || 1}`}
+                    target="_self"
+                    class="btn btn-sm p-0 dropdown-toggle"
+                  >
                     New Chat
                   </a>
                   <ul class="dropdown-menu top-100 start-0">
@@ -375,7 +392,8 @@ function ChatApp(props) {
                             class="dropdown-item text-decoration-none small fw-normal"
                             href=${() => `/tools/chat-v2?agentId=${agentItem.id}`}
                             target="_self"
-                          >${() => agentItem.name}</a>
+                            >${() => agentItem.name}</a
+                          >
                         </li>
                       `}
                     <//>
@@ -411,7 +429,8 @@ function ChatApp(props) {
                               class="form-control form-control-sm bg-transparent border-0 shadow-none px-0 py-0 text-primary fw-normal"
                               value=${() => editingState().title}
                               maxlength=${MAX_TITLE_LENGTH}
-                              onInput=${(event) => updateEditingTitle(event.currentTarget.value || "")}
+                              onInput=${(event) =>
+                                updateEditingTitle(event.currentTarget.value || "")}
                               onKeyDown=${(event) => handleTitleKeyDown(event, thread.id)}
                               onBlur=${() => stopEditingTitle()}
                               onClick=${(event) => {
@@ -567,7 +586,10 @@ function ChatApp(props) {
             </div>
 
             <!-- Input Area -->
-            <div class=${() => `${hasThreadId() ? "bottom-0 position-sticky" : "bottom-50 position-relative"}`}>
+            <div
+              class=${() =>
+                `${hasThreadId() ? "bottom-0 position-sticky" : "bottom-50 position-relative"}`}
+            >
               <!-- Welcome Message -->
               <div class="text-center my-3 font-serif" hidden=${() => hasThreadId()}>
                 <h1 class="font-poppins fw-medium fs-2 lh-md text-deep-violet mb-2">
@@ -585,8 +607,14 @@ function ChatApp(props) {
                 label="Scroll to bottom"
               />
 
-              <div ref=${(el) => { chatRef = el; }}>
-                <div class="bg-white position-relative border-gray border-1 border-solid shadow-md rounded">
+              <div
+                ref=${(el) => {
+                  chatRef = el;
+                }}
+              >
+                <div
+                  class="bg-white position-relative border-gray border-1 border-solid shadow-md rounded"
+                >
                   <!-- Attachments Preview -->
                   <${AttachmentsPreview}
                     inputRef=${() => inputFilesEl}
@@ -638,7 +666,9 @@ function ChatApp(props) {
                         arrow=${true}
                         class="text-white bg-primary"
                       >
-                        <div class="form-check form-switch form-switch-lg d-flex align-items-center gap-2 my-0 mx-2">
+                        <div
+                          class="form-check form-switch form-switch-lg d-flex align-items-center gap-2 my-0 mx-2"
+                        >
                           <input
                             class="form-check-input form-check-input-lg mt-0 cursor-pointer"
                             type="checkbox"
@@ -666,7 +696,9 @@ function ChatApp(props) {
                           required
                         >
                           <option value=${MODEL_OPTIONS.AWS_BEDROCK.OPUS.v4_6}>Opus 4.6</option>
-                          <option value=${MODEL_OPTIONS.AWS_BEDROCK.SONNET.v4_6} selected>Sonnet 4.5</option>
+                          <option value=${MODEL_OPTIONS.AWS_BEDROCK.SONNET.v4_6} selected>
+                            Sonnet 4.6
+                          </option>
                           <option value=${MODEL_OPTIONS.AWS_BEDROCK.HAIKU.v4_5}>Haiku 4.5</option>
                         </select>
                       <//>
@@ -694,7 +726,10 @@ function ChatApp(props) {
 
                 <!-- Privacy Notice -->
                 <div class="text-center bg-chat text-muted small py-1">
-                  <span class="me-1" title="Your conversations are stored only on your personal device.">
+                  <span
+                    class="me-1"
+                    title="Your conversations are stored only on your personal device."
+                  >
                     To maintain your privacy, we never retain your data on our systems.
                   </span>
                   Please double-check statements, as Research Optimizer can make mistakes.

@@ -6,6 +6,13 @@ import { json, Router } from "express";
 
 import { invoke, listModels } from "../clients/gateway.js";
 import { requireRole } from "../middleware.js";
+import {
+  insertTrace,
+  extractToolsCalled,
+  extractStreamUsage,
+  extractStreamToolsCalled,
+  extractStreamSpans,
+} from "../trace-writer.js";
 import { createHttpError } from "../utils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -57,10 +64,21 @@ api.post("/model", requireRole(), async (req, res, next) => {
     // For non-streaming responses
     if (!result?.stream) {
       await writeTrace({ traceId, type: "response", timestamp: new Date().toISOString(), result });
+      insertTrace({
+        traceId,
+        userID: user.id,
+        status: "success",
+        durationMs: Date.now() - parseInt(traceId),
+        inputTokens: result?.usage?.input_tokens,
+        outputTokens: result?.usage?.output_tokens,
+        toolsCalled: extractToolsCalled(result),
+        traceJson: { request: req.body, response: result },
+      }).catch(() => {});
       return res.json(result);
     }
 
     // For streaming responses — collect chunks for trace
+    const startMs = Date.now();
     const chunks = [];
     for await (const message of result.stream) {
       try {
@@ -77,6 +95,21 @@ api.post("/model", requireRole(), async (req, res, next) => {
       timestamp: new Date().toISOString(),
       chunks,
     });
+
+    // Insert trace row from stream chunks
+    const usage = extractStreamUsage(chunks);
+    insertTrace({
+      traceId,
+      userID: user.id,
+      status: "success",
+      durationMs: Date.now() - startMs,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      toolsCalled: extractStreamToolsCalled(chunks),
+      spans: extractStreamSpans(chunks),
+      traceJson: { request: req.body, chunks },
+    }).catch(() => {});
+
     res.end();
   } catch (error) {
     console.error("Error in model API:", error);
@@ -86,6 +119,13 @@ api.post("/model", requireRole(), async (req, res, next) => {
       timestamp: new Date().toISOString(),
       error: error.message,
     });
+    insertTrace({
+      traceId,
+      userID: user.id,
+      status: "error",
+      durationMs: Date.now() - parseInt(traceId),
+      traceJson: { request: req.body, error: error.message },
+    }).catch(() => {});
     next(createHttpError(500, error, "An error occurred while processing the model request"));
   }
 });

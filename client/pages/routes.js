@@ -9,11 +9,18 @@ const ConsentCrafterV2 = AuthorizedImport({ path: "./tools/consent-crafter-v2/in
 const Translate = AuthorizedImport({ path: "./tools/translate/index.js" });
 const SemanticSearch = AuthorizedImport({ path: "./tools/semantic-search.js" });
 const ExportConversations = AuthorizedImport({ path: "./tools/export-conversations/index.js" });
+const Workflows = AuthorizedImport({ path: "./tools/workflows/index.js" });
 const Users = AuthorizedImport({ path: "./users/index.js", roles: [1] });
 const UserEdit = AuthorizedImport({ path: "./users/edit.js", roles: [1] });
 const UserProfile = AuthorizedImport({ path: "./users/profile.js" });
 const Usage = AuthorizedImport({ path: "./users/usage.js", roles: [1] });
 const UserUsage = AuthorizedImport({ path: "./users/user-usage.js", roles: [1] });
+const AdminDashboard = AuthorizedImport({ path: "./admin/dashboard.js", roles: [1] });
+const Traces = AuthorizedImport({ path: "./admin/traces.js", roles: [1] });
+const Costs = AuthorizedImport({ path: "./admin/costs.js", roles: [1] });
+const Skills = AuthorizedImport({ path: "./admin/skills.js", roles: [1] });
+const Templates = AuthorizedImport({ path: "./admin/templates.js", roles: [1] });
+const ApiLog = AuthorizedImport({ path: "./admin/api-log.js", roles: [1] });
 
 /**
  * Generate site routes.
@@ -70,6 +77,11 @@ export default function getRoutes() {
           hidden: true,
         },
         {
+          path: "workflows",
+          title: "Packages",
+          component: Workflows,
+        },
+        {
           path: "export-conversations",
           title: "Export Conversations",
           component: ExportConversations,
@@ -110,6 +122,42 @@ export default function getRoutes() {
           path: "users/:id/usage",
           title: "User Usage",
           component: UserUsage,
+          hidden: true,
+        },
+        {
+          path: "admin",
+          title: "Admin",
+          component: AdminDashboard,
+          hidden: !hasRole([1]),
+        },
+        {
+          path: "admin/traces",
+          title: "Traces",
+          component: Traces,
+          hidden: true,
+        },
+        {
+          path: "admin/costs",
+          title: "Costs",
+          component: Costs,
+          hidden: true,
+        },
+        {
+          path: "admin/skills",
+          title: "Skills",
+          component: Skills,
+          hidden: true,
+        },
+        {
+          path: "admin/templates",
+          title: "Templates",
+          component: Templates,
+          hidden: true,
+        },
+        {
+          path: "admin/api-log",
+          title: "API Log",
+          component: ApiLog,
           hidden: true,
         },
         {

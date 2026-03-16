@@ -544,10 +544,17 @@ const STYLES = `
 const DownloadIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
 const ArchiveIcon = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>`;
 
+const EXPORT_FORMATS = [
+  { value: "json", label: "JSON" },
+  { value: "rich-json", label: "Rich JSON (with traces)" },
+  { value: "csv", label: "CSV" },
+];
+
 export default function ExportConversations() {
   const { user } = useAuthContext();
   const [db, setDb] = createSignal(null);
   const [exporting, setExporting] = createSignal(false);
+  const [exportFormat, setExportFormat] = createSignal("json");
   const [selected, setSelected] = createSignal(new Set());
   const [dateFrom, setDateFrom] = createSignal("");
   const [dateTo, setDateTo] = createSignal("");
@@ -648,11 +655,24 @@ export default function ExportConversations() {
     setDateTo("");
   }
 
+  function extractToolCalls(content) {
+    if (!Array.isArray(content)) return [];
+    return content
+      .filter((block) => block.type === "tool_use" || block.type === "tool_result")
+      .map((block) => ({
+        type: block.type,
+        name: block.name || block.tool_use_id,
+        input: block.input,
+        content: block.content,
+      }));
+  }
+
   async function handleExport() {
     const database = db();
     const convs = selectedConvs();
     if (!database || !convs.length) return;
 
+    const format = exportFormat();
     setExporting(true);
     try {
       const exportData = [];
@@ -661,6 +681,20 @@ export default function ExportConversations() {
         const sorted = msgs.sort((a, b) =>
           (a.timestamp || a.created || "").localeCompare(b.timestamp || b.created || "")
         );
+
+        const messages = sorted.map((m) => {
+          const base = {
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp || m.created || null,
+          };
+          if (format === "rich-json") {
+            base.toolCalls = extractToolCalls(m.content);
+          }
+          return base;
+        });
+
         exportData.push({
           id: conv.id,
           title: conv.title || null,
@@ -669,21 +703,35 @@ export default function ExportConversations() {
           updated: conv.updated || null,
           lastMessageAt: conv.lastMessageAt || null,
           messageCount: conv.messageCount || 0,
-          messages: sorted.map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp || m.created || null,
-          })),
+          messages,
         });
       }
 
-      const json = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([json], { type: "application/json" });
+      let blob, filename;
+      if (format === "csv") {
+        const convIdMap = new Map();
+        let convIdx = 1;
+        for (const conv of exportData) convIdMap.set(conv.id, convIdx++);
+        const allMessages = exportData.flatMap((c) =>
+          c.messages.map((m) => ({ ...m, conversationId: c.id }))
+        );
+        const csvContent =
+          buildConversationsCsv(exportData, convIdMap, user()?.id) +
+          "\n\n" +
+          buildMessagesCsv(allMessages, convIdMap);
+        blob = new Blob([csvContent], { type: "text/csv" });
+        filename = `chat-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      } else {
+        const json = JSON.stringify(exportData, null, 2);
+        blob = new Blob([json], { type: "application/json" });
+        const suffix = format === "rich-json" ? "-rich" : "";
+        filename = `chat-export${suffix}-${new Date().toISOString().slice(0, 10)}.json`;
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -795,17 +843,29 @@ export default function ExportConversations() {
               `;
             }}
           </div>
-          <button
-            class="export-btn"
-            onClick=${(e) => handleExport()}
-            disabled=${() => exporting() || !selectedConvs().length}
-          >
-            ${() =>
-              exporting()
-                ? "Exporting..."
-                : html`<span innerHTML=${DownloadIcon}></span> Export
-                    ${selectedConvs().length || ""} as JSON`}
-          </button>
+          <div class="d-flex gap-2 align-items-center">
+            <select
+              class="form-select form-select-sm"
+              style="width: auto; min-width: 140px;"
+              value=${exportFormat}
+              onChange=${(e) => setExportFormat(e.target.value)}
+            >
+              <${For} each=${EXPORT_FORMATS}>
+                ${(f) => html`<option value=${f.value}>${f.label}</option>`}
+              <//>
+            </select>
+            <button
+              class="export-btn"
+              onClick=${(e) => handleExport()}
+              disabled=${() => exporting() || !selectedConvs().length}
+            >
+              ${() =>
+                exporting()
+                  ? "Exporting..."
+                  : html`<span innerHTML=${DownloadIcon}></span> Export
+                      ${selectedConvs().length || ""}`}
+            </button>
+          </div>
         </div>
       <//>
 

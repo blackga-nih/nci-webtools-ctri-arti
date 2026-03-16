@@ -20,7 +20,7 @@ const DOC_LABELS = {
 
 export function determinePathway(estimatedValue, method, flags = {}) {
   if (estimatedValue < 15_000) {
-    return { pathway: "micro_purchase", requiredDocuments: [] };
+    return { pathway: "micro_purchase", requiredDocuments: ["market_research"] };
   }
   if (estimatedValue <= 350_000) {
     return {

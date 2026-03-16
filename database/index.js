@@ -89,6 +89,8 @@ export const {
   Session,
   Package,
   PackageDocument,
+  Trace,
+  RequestLog,
 } = schema;
 
 /**

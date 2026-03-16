@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { json, Router } from "express";
 import { logRequests } from "shared/middleware.js";
 
-import { logErrors, requireRole } from "./middleware.js";
+import { logErrors, requestLogger, requireRole } from "./middleware.js";
 import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
 import conversationRoutes from "./routes/conversations.js";
@@ -40,6 +40,7 @@ if (DEV_AUTO_AUTH === "true" && TEST_API_KEY) {
   });
 }
 
+api.use(requestLogger());
 api.use(requireRole());
 api.use(adminRoutes);
 api.use(authRoutes);
