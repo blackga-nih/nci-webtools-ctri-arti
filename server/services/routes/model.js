@@ -31,7 +31,8 @@ const api = Router();
 api.use(json({ limit: 1024 ** 3 })); // 1GB
 
 api.post("/model", requireRole(), async (req, res, next) => {
-  const user = req.session.user;
+  const user = req.session?.user;
+  if (!user) return res.status(401).json({ error: "Authentication required" });
   const ip = req.ip || req.socket.remoteAddress;
   const traceId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 

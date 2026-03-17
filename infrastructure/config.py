@@ -171,9 +171,8 @@ def load_config() -> tuple[Config, str, str]:
                             "PORT": "80",
                             "VERSION": get_env("GITHUB_SHA", "latest"),
                             "TIER": tier,
-                            # Internal service URLs (same task = same network namespace = localhost)
-                            "GATEWAY_URL": "http://localhost:3001",
-                            "CMS_URL": "http://localhost:3002",
+                            # Monolith mode: gateway/CMS run in-process
+                            # PGlite doesn't support multi-process access to the same data dir
                             **shared_environment,
                         },
                         "secrets": {
@@ -196,7 +195,7 @@ def load_config() -> tuple[Config, str, str]:
                             "CONGRESS_GOV_API_KEY": get_env("CONGRESS_GOV_API_KEY"),
                         },
                     },
-                    # Gateway service - AI inference
+                    # Gateway service - AI inference (standalone mode, not called in monolith)
                     {
                         "image": get_env("GATEWAY_IMAGE") or "httpd",
                         "name": "gateway",
@@ -209,14 +208,14 @@ def load_config() -> tuple[Config, str, str]:
                         "environment": {
                             "PORT": "3001",
                             "DB_SKIP_SYNC": "true",
-                            **shared_environment,
+                            "DB_STORAGE": "/app/data-gateway",
                         },
                         "secrets": {
                             **shared_secrets,
                             "GEMINI_API_KEY": get_env("GEMINI_API_KEY"),
                         },
                     },
-                    # CMS service - conversation management
+                    # CMS service - conversation management (standalone mode, not called in monolith)
                     {
                         "image": get_env("CMS_IMAGE") or "httpd",
                         "name": "cms",
@@ -229,7 +228,7 @@ def load_config() -> tuple[Config, str, str]:
                         "environment": {
                             "PORT": "3002",
                             "DB_SKIP_SYNC": "true",
-                            **shared_environment,
+                            "DB_STORAGE": "/app/data-cms",
                         },
                         "secrets": {
                             **shared_secrets,
