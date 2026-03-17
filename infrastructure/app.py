@@ -3,7 +3,7 @@ import aws_cdk as cdk
 
 from config import load_config
 from synthesizer import create_synthesizer
-from stacks import EcrRepositoryStack, EcsServiceStack, RdsClusterStack
+from stacks import EcrRepositoryStack, EcsServiceStack, RdsClusterStack, CodeBuildStack
 
 
 def main():
@@ -47,6 +47,15 @@ def main():
         min_capacity=ecs_config["minCapacity"],
         max_capacity=ecs_config["maxCapacity"],
         target_capacity_percent=ecs_config["targetCapacityPercent"],
+    )
+
+    # CodeBuild Stack (Docker builds)
+    CodeBuildStack(
+        app,
+        f"{prefix}-codebuild",
+        env=env,
+        prefix=prefix,
+        repository_name=config["ecr"]["repositoryName"],
     )
 
     # RDS Cluster Stack

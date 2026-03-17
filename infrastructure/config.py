@@ -114,13 +114,15 @@ def load_config() -> tuple[Config, str, str]:
     tier = get_env("TIER")
     prefix = f"{namespace}-{application}-{tier}"
 
-    # Shared secrets used by all services
-    shared_secrets = {
-        "PGHOST": [prefix, "host"],
-        "PGPORT": [prefix, "port"],
-        "PGDATABASE": [prefix, "dbname"],
-        "PGUSER": [prefix, "username"],
-        "PGPASSWORD": [prefix, "password"],
+    # Shared secrets used by all services (RDS)
+    # When RDS is available, reference Secrets Manager:
+    #   "PGHOST": [prefix, "host"],
+    #   "PGPORT": [prefix, "port"],
+    #   etc.
+    # For now, use PGlite (embedded Postgres) — no external DB needed
+    shared_secrets = {}
+    shared_environment = {
+        "DB_STORAGE": "/app/data",
     }
 
     config: Config = {
@@ -172,6 +174,7 @@ def load_config() -> tuple[Config, str, str]:
                             # Internal service URLs (same task = same network namespace = localhost)
                             "GATEWAY_URL": "http://localhost:3001",
                             "CMS_URL": "http://localhost:3002",
+                            **shared_environment,
                         },
                         "secrets": {
                             "SESSION_SECRET": get_env("SESSION_SECRET"),
@@ -206,6 +209,7 @@ def load_config() -> tuple[Config, str, str]:
                         "environment": {
                             "PORT": "3001",
                             "DB_SKIP_SYNC": "true",
+                            **shared_environment,
                         },
                         "secrets": {
                             **shared_secrets,
@@ -225,6 +229,7 @@ def load_config() -> tuple[Config, str, str]:
                         "environment": {
                             "PORT": "3002",
                             "DB_SKIP_SYNC": "true",
+                            **shared_environment,
                         },
                         "secrets": {
                             **shared_secrets,

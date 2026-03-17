@@ -43,7 +43,7 @@ export SERVER_IMAGE_LATEST=$MAIN_IMAGE_LATEST
 cd infrastructure
 pip install -r requirements.txt
 cdk deploy $PREFIX-ecr-repository --require-approval never
-# cdk deploy $PREFIX-rds-cluster --require-approval never
+# cdk deploy $PREFIX-rds-cluster --require-approval never  # SCP blocks rds:CreateDBCluster; using PGlite instead
 cd ..
 
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
