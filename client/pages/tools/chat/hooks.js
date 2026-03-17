@@ -488,6 +488,11 @@ export function useChat() {
       let isComplete = false;
       setLoading(true);
 
+      // Langfuse tracing: one traceId per user turn, sessionId = conversation
+      const langfuseTraceId = crypto.randomUUID();
+      const langfuseSessionId = conversation.id || undefined;
+      const langfuseTurnLabel = message?.slice(0, 60) || undefined;
+
       while (!isComplete) {
         const response = await fetch("/api/v1/model", {
           method: "POST",
@@ -499,6 +504,9 @@ export function useChat() {
             messages,
             thoughtBudget: reasoningMode ? 8000 : 0,
             stream: true,
+            langfuseSessionId,
+            langfuseTraceId,
+            langfuseTurnLabel,
           }),
         });
 

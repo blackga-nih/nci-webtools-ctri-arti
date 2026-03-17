@@ -6,7 +6,7 @@
 import { randomUUID } from "crypto";
 import db, { Package, PackageDocument } from "database";
 
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // ── Pathway routing ────────────────────────────────────────────────
 
@@ -135,6 +135,41 @@ export async function getNextVersion(packageId, docType) {
     .from(PackageDocument)
     .where(and(eq(PackageDocument.packageId, packageId), eq(PackageDocument.docType, docType)));
   return docs.length + 1;
+}
+
+// ── Document queries ────────────────────────────────────────────
+
+export async function listDocuments(packageId) {
+  return db
+    .select()
+    .from(PackageDocument)
+    .where(eq(PackageDocument.packageId, packageId))
+    .orderBy(desc(PackageDocument.createdAt));
+}
+
+export async function getDocument(packageId, docType) {
+  const docs = await db
+    .select()
+    .from(PackageDocument)
+    .where(and(eq(PackageDocument.packageId, packageId), eq(PackageDocument.docType, docType)))
+    .orderBy(desc(PackageDocument.version));
+  return docs[0] || null;
+}
+
+export async function getDocumentHistory(packageId, docType) {
+  return db
+    .select()
+    .from(PackageDocument)
+    .where(and(eq(PackageDocument.packageId, packageId), eq(PackageDocument.docType, docType)))
+    .orderBy(desc(PackageDocument.version));
+}
+
+export async function finalizeDocument(packageId, docType) {
+  const doc = await getDocument(packageId, docType);
+  if (!doc) return null;
+  if (doc.status === "final") return doc;
+  await db.update(PackageDocument).set({ status: "final" }).where(eq(PackageDocument.id, doc.id));
+  return { ...doc, status: "final" };
 }
 
 // ── Checklist ──────────────────────────────────────────────────────

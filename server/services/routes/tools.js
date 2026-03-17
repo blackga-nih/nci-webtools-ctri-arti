@@ -235,6 +235,10 @@ import {
   listPackages,
   updatePackageStatus,
   getPackageChecklist,
+  listDocuments,
+  getDocument,
+  getDocumentHistory,
+  finalizeDocument,
 } from "../packages.js";
 
 api.post("/packages", requireRole(), async (req, res) => {
@@ -325,21 +329,36 @@ api.get("/packages/:id/export", requireRole(), async (req, res) => {
       )
     );
 
-    // Fetch each document from S3 and add to ZIP
+    // Fetch each document from S3 and add to ZIP (md + pdf + docx)
     for (const doc of pkg.documents) {
       if (!doc.s3Key) continue;
-      try {
-        const s3Data = await getFile(KB_BUCKET, doc.s3Key);
-        const chunks = [];
-        for await (const chunk of s3Data.Body) {
-          chunks.push(chunk);
+      const baseName = doc.title || doc.docType;
+      const mdKey = doc.s3Key;
+      const pdfKey = mdKey.replace(/\.md$/, ".pdf");
+      const docxKey = mdKey.replace(/\.md$/, ".docx");
+
+      const formats = [
+        { key: mdKey, ext: "md" },
+        { key: pdfKey, ext: "pdf" },
+        { key: docxKey, ext: "docx" },
+      ];
+
+      for (const fmt of formats) {
+        try {
+          const s3Data = await getFile(KB_BUCKET, fmt.key);
+          const chunks = [];
+          for await (const chunk of s3Data.Body) {
+            chunks.push(chunk);
+          }
+          const content = Buffer.concat(chunks);
+          zip.file(`${doc.docType}/${baseName}.${fmt.ext}`, content);
+        } catch (err) {
+          // PDF/DOCX may not exist for older docs — skip silently
+          if (fmt.ext === "md") {
+            console.error(`Failed to fetch doc ${fmt.key}:`, err);
+            zip.file(`${doc.docType}/ERROR.txt`, `Failed to fetch: ${fmt.key}`);
+          }
         }
-        const content = Buffer.concat(chunks);
-        const filename = `${doc.docType}/${doc.title || doc.docType}.${doc.fileType || "md"}`;
-        zip.file(filename, content);
-      } catch (err) {
-        console.error(`Failed to fetch doc ${doc.s3Key}:`, err);
-        zip.file(`${doc.docType}/ERROR.txt`, `Failed to fetch: ${doc.s3Key}`);
       }
     }
 
@@ -351,6 +370,121 @@ api.get("/packages/:id/export", requireRole(), async (req, res) => {
   } catch (err) {
     console.error("Package export error:", err);
     res.status(500).json({ error: "Failed to export package" });
+  }
+});
+
+// ── Package document endpoints ─────────────────────────────────
+
+const DOC_BUCKET = process.env.DOC_BUCKET || "rh-eagle-files";
+
+api.post("/packages/:id/documents", requireRole(), async (req, res) => {
+  try {
+    const pkg = await getPackage(req.params.id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    const { doc_type, docType, title, data } = req.body;
+    const type = doc_type || docType;
+    if (!type || !title || !data) {
+      return res.status(400).json({ error: "doc_type, title, and data are required" });
+    }
+    const result = await generateDocument({
+      packageId: req.params.id,
+      docType: type,
+      title,
+      data,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("Package document create error:", err);
+    res.status(500).json({ error: err.message || "Failed to create document" });
+  }
+});
+
+api.get("/packages/:id/documents", requireRole(), async (req, res) => {
+  try {
+    const pkg = await getPackage(req.params.id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    const docs = await listDocuments(req.params.id);
+    const docsWithUrls = await Promise.all(
+      docs.map(async (d) => ({
+        ...d,
+        downloadUrl: d.s3Key ? await getPresignedUrl(DOC_BUCKET, d.s3Key, 900) : null,
+      }))
+    );
+    res.json(docsWithUrls);
+  } catch (err) {
+    console.error("Package documents list error:", err);
+    res.status(500).json({ error: "Failed to list documents" });
+  }
+});
+
+api.get("/packages/:id/documents/:docType", requireRole(), async (req, res) => {
+  try {
+    const doc = await getDocument(req.params.id, req.params.docType);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+    const downloadUrl = doc.s3Key ? await getPresignedUrl(DOC_BUCKET, doc.s3Key, 900) : null;
+    res.json({ ...doc, downloadUrl });
+  } catch (err) {
+    console.error("Package document get error:", err);
+    res.status(500).json({ error: "Failed to get document" });
+  }
+});
+
+api.get("/packages/:id/documents/:docType/history", requireRole(), async (req, res) => {
+  try {
+    const docs = await getDocumentHistory(req.params.id, req.params.docType);
+    const docsWithUrls = await Promise.all(
+      docs.map(async (d) => ({
+        ...d,
+        downloadUrl: d.s3Key ? await getPresignedUrl(DOC_BUCKET, d.s3Key, 900) : null,
+      }))
+    );
+    res.json(docsWithUrls);
+  } catch (err) {
+    console.error("Document history error:", err);
+    res.status(500).json({ error: "Failed to get document history" });
+  }
+});
+
+api.post("/packages/:id/documents/:docType/finalize", requireRole(), async (req, res) => {
+  try {
+    const doc = await finalizeDocument(req.params.id, req.params.docType);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+    res.json(doc);
+  } catch (err) {
+    console.error("Document finalize error:", err);
+    res.status(500).json({ error: "Failed to finalize document" });
+  }
+});
+
+// ── Package workflow endpoints ─────────────────────────────────
+
+api.post("/packages/:id/submit", requireRole(), async (req, res) => {
+  try {
+    const pkg = await getPackage(req.params.id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    if (pkg.checklist.missing.length > 0) {
+      return res.status(400).json({
+        error: "Cannot submit — missing required documents",
+        missing: pkg.checklist.missing,
+      });
+    }
+    const updated = await updatePackageStatus(req.params.id, "review");
+    res.json(updated);
+  } catch (err) {
+    console.error("Package submit error:", err);
+    res.status(500).json({ error: "Failed to submit package" });
+  }
+});
+
+api.post("/packages/:id/approve", requireRole(), async (req, res) => {
+  try {
+    const pkg = await getPackage(req.params.id);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    const updated = await updatePackageStatus(req.params.id, "complete");
+    res.json(updated);
+  } catch (err) {
+    console.error("Package approve error:", err);
+    res.status(500).json({ error: "Failed to approve package" });
   }
 });
 
@@ -417,6 +551,10 @@ api.get("/skill/:name", requireRole(), async (req, res) => {
   const skillPath = join(PLUGIN_PATH, "skills", name, "SKILL.md");
   try {
     const content = await readFile(skillPath, "utf-8");
+    // Content negotiation: JSON for API callers, raw text for browser/client
+    if (req.accepts("json") && !req.accepts("text/markdown")) {
+      return res.json({ skill: name, status: "loaded", instructions: content });
+    }
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");
     res.send(content);
   } catch {

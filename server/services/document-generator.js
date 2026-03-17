@@ -8,7 +8,9 @@ import { fileURLToPath } from "url";
 
 import Handlebars from "handlebars";
 
+import { generateDocx } from "./docx-generator.js";
 import { addDocument, getNextVersion, getPackage } from "./packages.js";
+import { generatePdf } from "./pdf-generator.js";
 import { putFile, getPresignedUrl } from "./s3.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -70,8 +72,35 @@ export async function generateDocument({ packageId, docType, title, data }) {
     ? `eagle/${TENANT_ID}/packages/${packageId}/${docType}/v${version}/${filename}.md`
     : `eagle/${TENANT_ID}/generated/${docType}/${filename}-${Date.now()}.md`;
 
-  // 4. Save to S3
+  // 4. Save markdown to S3
   const { contentHash } = await putFile(DOC_BUCKET, s3Key, rendered, "text/markdown");
+
+  // 4b. Generate PDF and DOCX, upload alongside markdown
+  const pdfKey = s3Key.replace(/\.md$/, ".pdf");
+  const docxKey = s3Key.replace(/\.md$/, ".docx");
+  const genDate =
+    templateData.DATE ||
+    new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const genOptions = { title, docType, isDraft: true, date: genDate };
+
+  try {
+    const [pdfBuffer, docxBuffer] = await Promise.all([
+      generatePdf(rendered, genOptions),
+      generateDocx(rendered, genOptions),
+    ]);
+    await Promise.all([
+      putFile(DOC_BUCKET, pdfKey, pdfBuffer, "application/pdf"),
+      putFile(
+        DOC_BUCKET,
+        docxKey,
+        docxBuffer,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ),
+    ]);
+  } catch (err) {
+    // Log but don't fail — markdown is the source of truth
+    console.error("PDF/DOCX generation warning:", err.message);
+  }
 
   // 5. Track in database if package exists
   let doc = null;
@@ -86,8 +115,12 @@ export async function generateDocument({ packageId, docType, title, data }) {
     });
   }
 
-  // 6. Generate download URL
-  const downloadUrl = await getPresignedUrl(DOC_BUCKET, s3Key);
+  // 6. Generate download URLs (PDF is primary, markdown and DOCX also available)
+  const [downloadUrl, markdownUrl, docxUrl] = await Promise.all([
+    getPresignedUrl(DOC_BUCKET, pdfKey),
+    getPresignedUrl(DOC_BUCKET, s3Key),
+    getPresignedUrl(DOC_BUCKET, docxKey),
+  ]);
 
   // 7. Fetch updated package checklist if applicable
   let checklist = null;
@@ -105,6 +138,8 @@ export async function generateDocument({ packageId, docType, title, data }) {
     s3Key,
     contentHash,
     downloadUrl,
+    markdownUrl,
+    docxUrl,
     checklist,
     preview: rendered.slice(0, 2000),
   };

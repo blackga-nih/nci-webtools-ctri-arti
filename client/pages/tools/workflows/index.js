@@ -1,4 +1,4 @@
-import { Download, FileText, Package } from "lucide-solid";
+import { Check, Download, ExternalLink, FileText, Lock, Package, Send } from "lucide-solid";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import html from "solid-js/html";
 
@@ -52,7 +52,7 @@ export default function Workflows() {
   const [search, setSearch] = createSignal("");
   const [selectedPkg, setSelectedPkg] = createSignal(null);
 
-  const [packages] = createResource(async () => {
+  const [packages, { refetch: refetchPackages }] = createResource(async () => {
     const res = await fetch("/api/v1/packages");
     if (!res.ok) return [];
     return res.json();
@@ -67,15 +67,38 @@ export default function Workflows() {
     return pkgs;
   });
 
-  const [checklist] = createResource(
+  const [pkgDetail] = createResource(
     () => selectedPkg()?.id,
     async (id) => {
       if (!id) return null;
-      const res = await fetch(`/api/v1/packages/${id}/checklist`);
-      if (!res.ok) return null;
-      return res.json();
+      const [pkgRes, docsRes] = await Promise.all([
+        fetch(`/api/v1/packages/${id}`),
+        fetch(`/api/v1/packages/${id}/documents`),
+      ]);
+      const pkg = pkgRes.ok ? await pkgRes.json() : null;
+      const docs = docsRes.ok ? await docsRes.json() : [];
+      return { pkg, docs };
     }
   );
+  const [submitting, setSubmitting] = createSignal(false);
+
+  const handleSubmit = async () => {
+    const id = selectedPkg()?.id;
+    if (!id) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/packages/${id}/submit`, { method: "POST" });
+      if (res.ok) {
+        setSelectedPkg(null);
+        refetchPackages();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Submit failed");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return html`
     <div class="container py-4">
@@ -174,6 +197,23 @@ export default function Workflows() {
           selectedPkg() ? html`<h5 class="mb-0 fw-bold">${selectedPkg().title}</h5>` : ""}
         footer=${html`
           <${Show} when=${() => selectedPkg()}>
+            <${Show}
+              when=${() => {
+                const detail = pkgDetail();
+                return (
+                  detail?.pkg?.checklist?.missing?.length === 0 &&
+                  detail?.pkg?.status === "drafting"
+                );
+              }}
+            >
+              <button
+                class="btn btn-success d-flex align-items-center gap-1"
+                disabled=${submitting}
+                onClick=${handleSubmit}
+              >
+                <${Send} size=${14} /> Submit for Review
+              </button>
+            <//>
             <a
               href=${() => `/api/v1/packages/${selectedPkg()?.id}/export`}
               class="btn btn-primary d-flex align-items-center gap-1"
@@ -219,28 +259,76 @@ export default function Workflows() {
 
             <div class="fw-bold small mb-2">Document Checklist</div>
             <${Show}
-              when=${() => !checklist.loading}
-              fallback=${html` <div class="text-muted small">Loading checklist...</div> `}
+              when=${() => !pkgDetail.loading}
+              fallback=${html` <div class="text-muted small">Loading...</div> `}
             >
-              <${For}
-                each=${() => checklist()?.checklist || []}
-                fallback=${html` <div class="text-muted small">No documents yet.</div> `}
-              >
-                ${(item) => html`
-                  <div class="d-flex align-items-center gap-2 mb-2">
-                    <${Show}
-                      when=${item.generated}
-                      fallback=${html` <span class="text-muted">&#9744;</span> `}
-                    >
-                      <span class="text-success">&#9745;</span>
-                    <//>
-                    <${FileText} size=${14} class="text-muted" />
-                    <span class="small">${item.docType}</span>
-                    <${Show} when=${item.generated}>
-                      <span class="badge bg-success small">v${item.document?.version || 1}</span>
-                    <//>
+              <${Show} when=${() => pkgDetail()?.pkg?.checklist}>
+                <div class="mb-2">
+                  <div class="progress mb-2" style="height: 6px;">
+                    <div
+                      class="progress-bar bg-success"
+                      style=${() => `width: ${pkgDetail()?.pkg?.checklist?.pct || 0}%`}
+                    ></div>
                   </div>
-                `}
+                  <div class="small text-muted mb-2">
+                    ${() => pkgDetail()?.pkg?.checklist?.pct || 0}% complete
+                  </div>
+                </div>
+
+                <${For} each=${() => pkgDetail()?.pkg?.checklist?.required || []}>
+                  ${(item) => {
+                    const doc = () => pkgDetail()?.docs?.find((d) => d.docType === item.docType);
+                    const isComplete = () => !!doc();
+                    return html`
+                      <div
+                        class="d-flex align-items-center gap-2 mb-2 p-2 rounded"
+                        style=${() =>
+                          isComplete()
+                            ? "background: rgba(25,135,84,0.08);"
+                            : "background: rgba(108,117,125,0.06);"}
+                      >
+                        <${Show}
+                          when=${isComplete}
+                          fallback=${html` <span class="text-muted opacity-50">&#9744;</span> `}
+                        >
+                          <${Check} size=${16} class="text-success" />
+                        <//>
+                        <${FileText}
+                          size=${14}
+                          class=${() => (isComplete() ? "text-success" : "text-muted")}
+                        />
+                        <span class="small flex-grow-1">${item.label}</span>
+                        <${Show} when=${isComplete}>
+                          <span class="badge bg-success-subtle text-success small">
+                            v${() => doc()?.version || 1}
+                          </span>
+                          <${Show} when=${() => doc()?.status === "final"}>
+                            <${Lock} size=${12} class="text-muted" title="Finalized" />
+                          <//>
+                          <${Show} when=${() => doc()?.downloadUrl}>
+                            <a
+                              href=${() => doc()?.downloadUrl}
+                              target="_blank"
+                              class="btn btn-sm btn-outline-primary py-0 px-1 d-flex align-items-center gap-1"
+                              title="Download"
+                              onClick=${(e) => e.stopPropagation()}
+                            >
+                              <${ExternalLink} size=${12} />
+                            </a>
+                          <//>
+                        <//>
+                      </div>
+                    `;
+                  }}
+                <//>
+              <//>
+
+              <!-- Missing docs callout -->
+              <${Show} when=${() => (pkgDetail()?.pkg?.checklist?.missing?.length || 0) > 0}>
+                <div class="alert alert-warning small py-2 mt-2 mb-0">
+                  ${() => pkgDetail()?.pkg?.checklist?.missing?.length} document(s) still needed
+                  before this package can be submitted.
+                </div>
               <//>
             <//>
           </div>
