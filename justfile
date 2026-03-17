@@ -58,22 +58,24 @@ sso-login:
 
 # === Deployment (requires Docker Desktop + AWS CDK) ===
 
+# Set the repo root for all deploy recipes
+repo_root := justfile_directory()
+
 # Full deploy: CDK stacks + Docker build/push + ECS service
 deploy:
     bash infrastructure/deploy.sh
 
-# Deploy CDK stacks only (no Docker)
+# Deploy CDK stacks only (no Docker) — updates IAM policies, task defs, etc.
 deploy-cdk:
     #!/usr/bin/env bash
     set -ex
-    cd "$(dirname "$0")"
-    source infrastructure/.env
+    cd "{{repo_root}}"
     set -a && source infrastructure/.env && set +a
     [ -z "$CI" ] && [ -n "$AWS_PROFILE" ] && unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
     export TIER=${TIER:?} AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:?} AWS_REGION=${AWS_REGION:?}
     export PREFIX=ctri-research-optimizer-$TIER
     cd infrastructure
-    pip install -r requirements.txt
+    pip install -q -r requirements.txt
     cdk deploy $PREFIX-ecr-repository --require-approval never
     cdk deploy $PREFIX-ecs-service --require-approval never
 
@@ -81,7 +83,7 @@ deploy-cdk:
 deploy-images:
     #!/usr/bin/env bash
     set -ex
-    cd "$(dirname "$0")"
+    cd "{{repo_root}}"
     set -a && source infrastructure/.env && set +a
     [ -z "$CI" ] && [ -n "$AWS_PROFILE" ] && unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
     export TIER=${TIER:?} AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:?} AWS_REGION=${AWS_REGION:?}
@@ -106,7 +108,7 @@ deploy-images:
 deploy-ecs:
     #!/usr/bin/env bash
     set -ex
-    cd "$(dirname "$0")"
+    cd "{{repo_root}}"
     set -a && source infrastructure/.env && set +a
     [ -z "$CI" ] && [ -n "$AWS_PROFILE" ] && unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
     export TIER=${TIER:?} AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:?} AWS_REGION=${AWS_REGION:?}
@@ -116,12 +118,29 @@ deploy-ecs:
     export GATEWAY_IMAGE=$ECR_REGISTRY/$PREFIX:gateway-latest
     export CMS_IMAGE=$ECR_REGISTRY/$PREFIX:cms-latest
     cd infrastructure
-    pip install -r requirements.txt
+    pip install -q -r requirements.txt
     cdk deploy $PREFIX-ecs-service --require-approval never
 
 # Force ECS to pull latest images and restart
 deploy-restart:
     aws ecs update-service --cluster ctri-research-optimizer-dev --service ctri-research-optimizer-dev --force-new-deployment --profile eagle
+
+# Quick redeploy: update CDK stacks (IAM, task def) then force ECS restart
+redeploy:
+    #!/usr/bin/env bash
+    set -ex
+    cd "{{repo_root}}"
+    set -a && source infrastructure/.env && set +a
+    [ -z "$CI" ] && [ -n "$AWS_PROFILE" ] && unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+    export TIER=${TIER:?} AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:?} AWS_REGION=${AWS_REGION:?}
+    export PREFIX=ctri-research-optimizer-$TIER
+    cd infrastructure
+    pip install -q -r requirements.txt
+    echo "=== Deploying CDK stack ==="
+    cdk deploy $PREFIX-ecs-service --require-approval never
+    echo "=== Forcing ECS restart ==="
+    aws ecs update-service --cluster $PREFIX --service $PREFIX --force-new-deployment --profile eagle --output text
+    echo "=== Done. Service will roll out new tasks in ~2 minutes ==="
 
 # Trigger CodeBuild to build images remotely (no local Docker needed)
 deploy-codebuild:

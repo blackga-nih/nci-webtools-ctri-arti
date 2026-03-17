@@ -1,5 +1,8 @@
 import db, { Trace } from "database";
 
+/** Resolve environment tag: TIER (infra) > NODE_ENV > "local" */
+const APP_ENV = process.env.TIER || process.env.NODE_ENV || "local";
+
 /**
  * Insert a trace row into the database. Fire-and-forget safe.
  */
@@ -16,6 +19,7 @@ export async function insertTrace(data) {
     toolsCalled: data.toolsCalled || [],
     spans: data.spans || [],
     traceJson: data.traceJson || {},
+    environment: data.environment || APP_ENV,
   });
 }
 

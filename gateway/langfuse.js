@@ -53,14 +53,16 @@ export function startTrace({ model, userID, sessionId, traceId, turnLabel, input
   const lf = getLangfuse();
   if (!lf) return null;
 
+  const env = process.env.TIER || process.env.NODE_ENV || "local";
+
   const trace = lf.trace({
     id: traceId || undefined,
     name: turnLabel || "model-inference",
     userId: userID || undefined,
     sessionId: sessionId || undefined,
     input: input || undefined,
-    metadata: { ...metadata, app: "research-optimizer" },
-    tags: ["research-optimizer"],
+    metadata: { ...metadata, app: "research-optimizer", environment: env },
+    tags: ["research-optimizer", `env:${env}`],
   });
 
   const generation = trace.generation({

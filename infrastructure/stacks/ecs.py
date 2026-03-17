@@ -99,6 +99,20 @@ class EcsServiceStack(Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")
         )
 
+        # CloudWatch Logs: allow the app to create log groups for inference telemetry
+        task_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                ],
+                resources=[
+                    f"arn:aws:logs:*:{Stack.of(self).account}:log-group:/eagle/*",
+                ],
+            )
+        )
+
         log_group = logs.LogGroup(
             self,
             "log-group",
