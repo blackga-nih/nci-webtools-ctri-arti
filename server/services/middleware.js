@@ -88,7 +88,11 @@ export async function loginMiddleware(req, res, next) {
     }
 
     // After we receive the authorization code, we need to exchange it for an access token.
-    const redirectUrl = new URL(req.originalUrl, `${req.protocol}://${req.get("host")}`);
+    // Use OAUTH_CALLBACK_URL as base to ensure correct protocol (https) behind proxies/API Gateway
+    const redirectUrl = new URL(
+      req.originalUrl,
+      OAUTH_CALLBACK_URL || `${req.protocol}://${req.get("host")}`
+    );
     const checks = {
       expectedState: sess?.oidc?.state,
       expectedNonce: sess?.oidc?.nonce,
