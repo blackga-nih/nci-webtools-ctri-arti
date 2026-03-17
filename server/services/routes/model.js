@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 
 import { json, Router } from "express";
 
+import { chatConfigs } from "../chat-config.js";
 import { invoke, listModels } from "../clients/gateway.js";
 import { requireRole } from "../middleware.js";
 import {
@@ -37,6 +38,16 @@ api.post("/model", requireRole(), async (req, res, next) => {
   const traceId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
+    // Resolve server-side chat config (tools + system prompt) when chatConfig is set.
+    // This keeps the client request body small enough to pass through the WAF (< 8 KB).
+    if (req.body.chatConfig && chatConfigs[req.body.chatConfig]) {
+      const cfg = chatConfigs[req.body.chatConfig];
+      req.body.tools = cfg.tools;
+      req.body.system = cfg.systemPrompt(req.body.context || {});
+      delete req.body.context;
+      delete req.body.chatConfig;
+    }
+
     // Log the request
     await writeTrace({
       traceId,

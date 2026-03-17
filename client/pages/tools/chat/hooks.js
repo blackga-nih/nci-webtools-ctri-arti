@@ -259,9 +259,9 @@ export function useChat() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           model,
-          tools,
+          chatConfig: "eagle",
+          context: getClientContext(context),
           messages: [...baseMessages, titleInstructionMessage],
-          system: titleSystemPrompt,
           thoughtBudget: 0,
           stream: false,
         }),
@@ -499,8 +499,8 @@ export function useChat() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             model,
-            tools,
-            system: systemPrompt(getClientContext(context)),
+            chatConfig: "eagle",
+            context: getClientContext(context),
             messages,
             thoughtBudget: reasoningMode ? 8000 : 0,
             stream: true,
