@@ -2,10 +2,10 @@ import { Activity, AlertTriangle, Clock, Globe } from "lucide-solid";
 import { createResource, createSignal, For, Show } from "solid-js";
 import html from "solid-js/html";
 
-import PageHeader from "../../components/page-header.js";
-import StatCard from "../../components/stat-card.js";
-import { DataTable } from "../../components/table.js";
-import Tabs from "../../components/tabs.js";
+import { AdminDataTable } from "../../components/admin/data-table.js";
+import AdminPageHeader from "../../components/admin/page-header.js";
+import AdminStatCard from "../../components/admin/stat-card.js";
+import AdminTabs from "../../components/admin/tabs.js";
 
 const CATEGORIES = [
   { value: "all", label: "All" },
@@ -34,55 +34,64 @@ export default function ApiLog() {
 
   const methodBadge = (method) => {
     const colors = {
-      GET: "bg-primary",
-      POST: "bg-success",
-      PUT: "bg-warning",
-      PATCH: "bg-info",
-      DELETE: "bg-danger",
+      GET: "bg-blue-50 text-blue-700",
+      POST: "bg-green-50 text-green-700",
+      PUT: "bg-amber-50 text-amber-700",
+      PATCH: "bg-cyan-50 text-cyan-700",
+      DELETE: "bg-red-50 text-red-700",
     };
-    return html`<span class=${`badge ${colors[method] || "bg-secondary"}`}>${method}</span>`;
+    const cls = colors[method] || "bg-gray-100 text-gray-600";
+    return html`<span class=${`text-xs px-2 py-1 rounded-full font-medium ${cls}`}
+      >${method}</span
+    >`;
   };
 
   const statusBadge = (code) => {
     const cls =
       code < 300
-        ? "text-success"
+        ? "text-green-700 font-semibold"
         : code < 400
-          ? "text-info"
+          ? "text-blue-600 font-semibold"
           : code < 500
-            ? "text-warning"
-            : "text-danger";
-    return html`<span class=${`fw-semibold ${cls}`}>${code}</span>`;
+            ? "text-amber-600 font-semibold"
+            : "text-red-600 font-semibold";
+    return html`<span class=${cls}>${code}</span>`;
   };
 
   const routeColumns = [
     {
       key: "method",
       title: "Method",
-      cellClassName: "small",
       render: (row) => methodBadge(row.method),
     },
-    { key: "path", title: "Route", cellClassName: "small font-monospace" },
+    {
+      key: "path",
+      title: "Route",
+      cellClass: "text-gray-900 font-mono text-sm",
+    },
     {
       key: "calls",
       title: "Calls",
-      cellClassName: "small font-monospace",
+      cellClass: "text-gray-600 text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) => Number(row.calls).toLocaleString(),
     },
     {
       key: "avgMs",
       title: "Avg (ms)",
-      cellClassName: "small font-monospace",
+      cellClass: "text-gray-600 text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) => `${row.avgMs}ms`,
     },
     {
       key: "errors",
       title: "Errors",
-      cellClassName: "small font-monospace",
+      cellClass: "text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) =>
-        html`<span class=${Number(row.errors) > 0 ? "text-danger fw-bold" : ""}
-          >${row.errors}</span
-        >`,
+        html`<span class=${Number(row.errors) > 0 ? "text-red-600 font-bold" : "text-gray-400"}>
+          ${row.errors}
+        </span>`,
     },
   ];
 
@@ -90,113 +99,111 @@ export default function ApiLog() {
     {
       key: "createdAt",
       title: "Time",
-      cellClassName: "small text-muted",
+      cellClass: "text-gray-500",
       render: (row) => new Date(row.createdAt).toLocaleString(),
     },
     {
       key: "method",
       title: "Method",
-      cellClassName: "small",
       render: (row) => methodBadge(row.method),
     },
-    { key: "path", title: "Path", cellClassName: "small font-monospace" },
+    {
+      key: "path",
+      title: "Path",
+      cellClass: "text-gray-900 font-mono text-sm",
+    },
     {
       key: "statusCode",
       title: "Status",
-      cellClassName: "small",
       render: (row) => statusBadge(row.statusCode),
     },
     {
       key: "durationMs",
       title: "Duration",
-      cellClassName: "small font-monospace",
+      cellClass: "text-gray-600 text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) => `${row.durationMs}ms`,
     },
   ];
 
   return html`
-    <div class="container py-4">
-      <${PageHeader}
-        title="API Request Log"
-        description="Monitor API traffic and performance"
-        backHref="/_/admin"
-        backLabel="Admin Dashboard"
-      />
+    <div class="min-h-screen bg-gray-50">
+      <div class="p-8 max-w-7xl mx-auto">
+        <${AdminPageHeader}
+          title="API Request Log"
+          description="Monitor API traffic and performance"
+          breadcrumbs=${[{ label: "Admin", href: "/_/admin" }, { label: "API Log" }]}
+        />
 
-      <${Tabs}
-        items=${CATEGORIES}
-        active=${category}
-        onSelect=${(v) => {
-          setCategory(v);
-          setPage(1);
-        }}
-        className="mb-4"
-      />
+        <${AdminTabs}
+          items=${CATEGORIES}
+          active=${category}
+          onSelect=${(v) => {
+            setCategory(v);
+            setPage(1);
+          }}
+        />
 
-      <${Show}
-        when=${() => !data.loading}
-        fallback=${html`
-          <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-          </div>
-        `}
-      >
-        <!-- Summary cards -->
-        <div class="row g-3 mb-4">
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+        <${Show}
+          when=${() => !data.loading}
+          fallback=${html`
+            <div class="flex justify-center py-20">
+              <div
+                class="w-8 h-8 border-4 border-nci-primary border-t-transparent rounded-full animate-spin"
+              ></div>
+            </div>
+          `}
+        >
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <${AdminStatCard}
               icon=${Activity}
               value=${() => (data()?.summary?.totalRequests ?? 0).toLocaleString()}
               label="Total Requests"
-              iconColor="text-primary"
+              color="bg-blue-500"
             />
-          </div>
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+            <${AdminStatCard}
               icon=${Clock}
               value=${() => `${data()?.summary?.avgResponseTime ?? 0}ms`}
               label="Avg Response Time"
-              iconColor="text-info"
+              color="bg-cyan-500"
             />
-          </div>
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+            <${AdminStatCard}
               icon=${AlertTriangle}
               value=${() => data()?.summary?.errors ?? 0}
               label="Errors"
-              iconColor="text-danger"
+              color="bg-red-500"
             />
-          </div>
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+            <${AdminStatCard}
               icon=${Globe}
               value=${() => data()?.summary?.uniqueRoutes ?? 0}
               label="Unique Routes"
-              iconColor="text-secondary"
+              color="bg-gray-500"
             />
           </div>
-        </div>
 
-        <!-- Route stats table -->
-        <h5 class="fw-bold mb-3">Route Statistics</h5>
-        <${DataTable}
-          data=${() => data()?.routeStats || []}
-          columns=${routeColumns}
-          className="mb-4"
-        />
+          <!-- Route stats table -->
+          <${AdminDataTable}
+            title="Route Statistics"
+            description="Aggregated stats per route"
+            data=${() => data()?.routeStats || []}
+            columns=${routeColumns}
+          />
 
-        <!-- Recent requests table -->
-        <h5 class="fw-bold mb-3">Recent Requests</h5>
-        <${DataTable}
-          remote=${true}
-          data=${() => data()?.recent || []}
-          columns=${recentColumns}
-          totalItems=${() => data()?.meta?.total || 0}
-          page=${page}
-          rowsPerPage=${limit}
-          onPageChange=${({ page: p }) => setPage(p)}
-        />
-      <//>
+          <div class="mt-6">
+            <${AdminDataTable}
+              remote=${true}
+              title="Recent Requests"
+              description="Individual API request log entries"
+              data=${() => data()?.recent || []}
+              columns=${recentColumns}
+              totalItems=${() => data()?.meta?.total || 0}
+              page=${page}
+              rowsPerPage=${limit}
+              onPageChange=${({ page: p }) => setPage(p)}
+            />
+          </div>
+        <//>
+      </div>
     </div>
   `;
 }

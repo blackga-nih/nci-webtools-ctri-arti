@@ -186,6 +186,11 @@ a:hover {
   text-decoration: underline;
 }
 
+a.no-underline:hover,
+a.no-underline:active {
+  text-decoration: none;
+}
+
 a.disabled-link {
   cursor: default;
   pointer-events: none;
@@ -358,39 +363,187 @@ ul {
   line-height: 0.85 !important;
 }
 
+/* ── Markdown prose styling (matches sm_eagle prose) ── */
+
+.markdown {
+  color: #374151;
+  line-height: 1.65;
+  font-size: 0.9rem;
+}
+
 .markdown h1,
 .markdown h2,
 .markdown h3,
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-weight: 600;
+  color: #111827;
 }
 
 .markdown h1 {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  margin: 1.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .markdown h2 {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
+  margin: 1.25rem 0 0.75rem;
 }
 
 .markdown h3 {
-  font-size: 1rem;
+  font-size: 1.1rem;
+  margin: 1rem 0 0.5rem;
 }
 
 .markdown h4 {
-  font-size: 0.9rem;
+  font-size: 1rem;
+  margin: 0.75rem 0 0.5rem;
 }
 
 .markdown h5 {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0.25rem;
 }
 
 .markdown h6 {
-  font-size: 0.7rem;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.markdown p {
+  margin: 0.75rem 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.markdown ul {
+  list-style-type: disc;
+}
+
+.markdown ol {
+  list-style-type: decimal;
+}
+
+.markdown li {
+  margin: 0.25rem 0;
+  padding-left: 0.25rem;
+}
+
+.markdown li > ul,
+.markdown li > ol {
+  margin: 0.25rem 0;
+}
+
+/* Code */
+.markdown code {
+  padding: 0.125rem 0.375rem;
+  background: #f3f4f6;
+  color: #1f2937;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.markdown pre {
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.markdown pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Tables */
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.markdown thead {
+  background: #f9fafb;
+}
+
+.markdown th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.markdown td {
+  padding: 0.75rem 1rem;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.markdown tbody tr:hover {
+  background: #f9fafb;
+}
+
+.markdown tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Blockquote */
+.markdown blockquote {
+  border-left: 4px solid #3b82f6;
+  background: #eff6ff;
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  color: #374151;
+  font-style: italic;
+}
+
+.markdown blockquote p {
+  margin: 0.25rem 0;
+}
+
+/* Horizontal rule */
+.markdown hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+/* Strong / emphasis */
+.markdown strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Images */
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  border: 1px solid #e5e7eb;
 }
 
 .link-primary .text-primary:hover {
@@ -1304,4 +1457,87 @@ dialog .close-btn {
 
 .card-lg {
   min-height: 600px;
+}
+
+/* Tailwind supplements */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Prose styles for markdown content in admin panels */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: #111827;
+}
+.prose h1 {
+  font-size: 1.5rem;
+}
+.prose h2 {
+  font-size: 1.25rem;
+}
+.prose h3 {
+  font-size: 1.125rem;
+}
+.prose p {
+  margin-bottom: 0.75em;
+  line-height: 1.625;
+}
+.prose ul,
+.prose ol {
+  margin-bottom: 0.75em;
+  padding-left: 1.5em;
+}
+.prose li {
+  margin-bottom: 0.25em;
+}
+.prose code {
+  background: #f3f4f6;
+  padding: 0.125em 0.25em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+.prose pre {
+  background: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+.prose th,
+.prose td {
+  padding: 0.5em 0.75em;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+.prose th {
+  background: #f9fafb;
+  font-weight: 600;
 }

@@ -1,4 +1,13 @@
-import db, { Model, Package, RequestLog, Role, Trace, Usage, User } from "database";
+import db, {
+  Model,
+  Package,
+  PackageDocument,
+  RequestLog,
+  Role,
+  Trace,
+  Usage,
+  User,
+} from "database";
 
 import {
   eq,
@@ -661,6 +670,57 @@ api.get(
         createdAt: u.createdAt,
       })),
       meta: { total, limit, offset, days },
+    });
+  })
+);
+
+// ===== Documents =====
+
+api.get(
+  "/admin/documents",
+  requireRole("admin"),
+  routeHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const docType = req.query.docType;
+
+    const conditions = [];
+    if (docType) conditions.push(eq(PackageDocument.docType, docType));
+    const where = conditions.length ? and(...conditions) : undefined;
+
+    const [{ value: total }] = await db
+      .select({ value: count() })
+      .from(PackageDocument)
+      .where(where);
+
+    const [{ value: docTypes }] = await db
+      .select({ value: countDistinct(PackageDocument.docType) })
+      .from(PackageDocument);
+
+    const rows = await db
+      .select({
+        id: PackageDocument.id,
+        docType: PackageDocument.docType,
+        title: PackageDocument.title,
+        version: PackageDocument.version,
+        s3Key: PackageDocument.s3Key,
+        status: PackageDocument.status,
+        fileType: PackageDocument.fileType,
+        createdAt: PackageDocument.createdAt,
+        packageId: PackageDocument.packageId,
+        packageTitle: Package.title,
+        packagePathway: Package.pathway,
+      })
+      .from(PackageDocument)
+      .leftJoin(Package, eq(PackageDocument.packageId, Package.id))
+      .where(where)
+      .orderBy(desc(PackageDocument.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json({
+      data: rows,
+      meta: { total, limit, offset, docTypes },
     });
   })
 );

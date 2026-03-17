@@ -12,6 +12,7 @@ import db, { Model, User } from "database";
 
 import { eq, and } from "drizzle-orm";
 import { runModel as directRunModel } from "gateway/inference.js";
+import { startTrace, endGeneration, flushLangfuse } from "gateway/langfuse.js";
 import { trackModelUsage } from "gateway/usage.js";
 
 const GATEWAY_URL = process.env.GATEWAY_URL;
@@ -40,35 +41,78 @@ function buildDirectClient() {
       stream,
       ip,
       outputConfig,
+      langfuseTraceId,
+      langfuseSessionId,
+      langfuseTurnLabel,
     }) {
       const limited = await checkRateLimit(userID);
       if (limited) return limited;
 
-      const result = await directRunModel({
+      // Start Langfuse trace (or add generation to existing trace via traceId)
+      const lf = startTrace({
         model,
-        messages,
-        system,
-        tools,
-        thoughtBudget,
-        stream,
-        outputConfig,
+        userID: userID ? String(userID) : undefined,
+        sessionId: langfuseSessionId,
+        traceId: langfuseTraceId,
+        turnLabel: langfuseTurnLabel,
+        input: messages,
+        metadata: { stream, thoughtBudget, toolCount: tools?.length || 0 },
       });
 
-      // For non-streaming responses, track usage inline
-      if (!result?.stream && userID) {
-        await trackModelUsage(userID, model, ip, result.usage);
+      let result;
+      try {
+        result = await directRunModel({
+          model,
+          messages,
+          system,
+          tools,
+          thoughtBudget,
+          stream,
+          outputConfig,
+        });
+      } catch (error) {
+        // Record error in Langfuse
+        endGeneration(lf?.generation, {
+          trace: lf?.trace,
+          level: "ERROR",
+          statusMessage: error.message,
+        });
+        throw error;
       }
 
-      // For streaming, wrap to track usage on metadata
+      // For non-streaming responses, track usage + end Langfuse trace
+      if (!result?.stream && userID) {
+        await trackModelUsage(userID, model, ip, result.usage);
+        endGeneration(lf?.generation, {
+          trace: lf?.trace,
+          output: result.output?.message?.content,
+          usage: result.usage,
+          stopReason: result.stopReason,
+        });
+      }
+
+      // For streaming, wrap to track usage on metadata and end Langfuse trace
       if (result?.stream) {
         return {
           stream: (async function* () {
+            let lastUsage = null;
+            let lastStopReason = null;
             for await (const message of result.stream) {
               if (message.metadata && userID) {
                 await trackModelUsage(userID, model, ip, message.metadata.usage);
+                lastUsage = message.metadata.usage;
+              }
+              if (message.messageStop?.stopReason) {
+                lastStopReason = message.messageStop.stopReason;
               }
               yield message;
             }
+            // End Langfuse generation after stream completes
+            endGeneration(lf?.generation, {
+              trace: lf?.trace,
+              usage: lastUsage,
+              stopReason: lastStopReason,
+            });
           })(),
         };
       }

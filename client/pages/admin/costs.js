@@ -2,15 +2,15 @@ import { Activity, DollarSign, Hash, Users } from "lucide-solid";
 import { createResource, createSignal, Show } from "solid-js";
 import html from "solid-js/html";
 
-import PageHeader from "../../components/page-header.js";
-import StatCard from "../../components/stat-card.js";
-import { DataTable } from "../../components/table.js";
-import Tabs from "../../components/tabs.js";
+import { AdminDataTable } from "../../components/admin/data-table.js";
+import AdminPageHeader from "../../components/admin/page-header.js";
+import AdminStatCard from "../../components/admin/stat-card.js";
+import AdminTabs from "../../components/admin/tabs.js";
 
 const DATE_RANGES = [
-  { value: "7", label: "7 days" },
-  { value: "30", label: "30 days" },
-  { value: "90", label: "90 days" },
+  { value: "7", label: "7d" },
+  { value: "30", label: "30d" },
+  { value: "90", label: "90d" },
 ];
 
 export default function CostTracking() {
@@ -32,110 +32,118 @@ export default function CostTracking() {
     {
       key: "userName",
       title: "User",
-      cellClassName: "small",
+      cellClass: "text-gray-700",
       render: (row) => row.userName || row.userEmail || "—",
     },
-    { key: "modelName", title: "Model", cellClassName: "small" },
+    {
+      key: "modelName",
+      title: "Model",
+      render: (row) =>
+        html`<span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium"
+          >${row.modelName}</span
+        >`,
+    },
     {
       key: "inputTokens",
       title: "Input Tokens",
-      cellClassName: "small font-monospace",
+      cellClass: "text-gray-600 text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) => Math.round(row.inputTokens || 0).toLocaleString(),
     },
     {
       key: "outputTokens",
       title: "Output Tokens",
-      cellClassName: "small font-monospace",
+      cellClass: "text-gray-600 text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) => Math.round(row.outputTokens || 0).toLocaleString(),
     },
     {
       key: "cost",
       title: "Cost",
-      cellClassName: "small font-monospace",
+      cellClass: "font-semibold text-gray-900 text-right tabular-nums",
+      headerClass: "text-right",
       render: (row) => `$${Number(row.cost || 0).toFixed(4)}`,
     },
     {
       key: "createdAt",
       title: "Date",
-      cellClassName: "small text-muted",
+      cellClass: "text-gray-500",
       render: (row) => new Date(row.createdAt).toLocaleString(),
     },
   ];
 
   return html`
-    <div class="container py-4">
-      <${PageHeader}
-        title="Cost Tracking"
-        description="Monitor API usage costs and token consumption"
-        backHref="/_/admin"
-        backLabel="Admin Dashboard"
-      />
+    <div class="min-h-screen bg-gray-50">
+      <div class="p-8 max-w-7xl mx-auto">
+        <${AdminPageHeader}
+          title="Cost Management"
+          description="Monitor AI usage costs and token consumption"
+          breadcrumbs=${[{ label: "Admin", href: "/_/admin" }, { label: "Costs" }]}
+        />
 
-      <${Tabs}
-        items=${DATE_RANGES}
-        active=${days}
-        onSelect=${(v) => {
-          setDays(v);
-          setPage(1);
-        }}
-        className="mb-4"
-      />
+        <${AdminTabs}
+          items=${DATE_RANGES}
+          active=${days}
+          onSelect=${(v) => {
+            setDays(v);
+            setPage(1);
+          }}
+        />
 
-      <${Show}
-        when=${() => !data.loading}
-        fallback=${html`
-          <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-          </div>
-        `}
-      >
-        <!-- Summary cards -->
-        <div class="row g-3 mb-4">
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+        <${Show}
+          when=${() => !data.loading}
+          fallback=${html`
+            <div class="flex justify-center py-20">
+              <div
+                class="w-8 h-8 border-4 border-nci-primary border-t-transparent rounded-full animate-spin"
+              ></div>
+            </div>
+          `}
+        >
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <${AdminStatCard}
               icon=${DollarSign}
               value=${() => `$${data()?.summary?.totalCost ?? "0"}`}
               label="Total Cost"
-              iconColor="text-success"
+              color="bg-green-500"
+              description=${() => `Last ${days()} days`}
             />
-          </div>
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+            <${AdminStatCard}
               icon=${Activity}
               value=${() => `$${data()?.summary?.avgCostPerRequest ?? "0"}`}
               label="Avg Cost/Request"
-              iconColor="text-info"
+              color="bg-blue-500"
+              description="Per API call"
             />
-          </div>
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+            <${AdminStatCard}
               icon=${Hash}
               value=${() => (data()?.summary?.totalTokens ?? 0).toLocaleString()}
               label="Total Tokens"
-              iconColor="text-primary"
+              color="bg-purple-500"
+              description="Input + Output"
             />
-          </div>
-          <div class="col-sm-6 col-lg-3">
-            <${StatCard}
+            <${AdminStatCard}
               icon=${Users}
               value=${() => data()?.summary?.activeUsers ?? "0"}
               label="Active Users"
-              iconColor="text-warning"
+              color="bg-amber-500"
+              description="With API activity"
             />
           </div>
-        </div>
 
-        <!-- Usage table -->
-        <${DataTable}
-          remote=${true}
-          data=${() => data()?.data || []}
-          columns=${columns}
-          totalItems=${() => data()?.meta?.total || 0}
-          page=${page}
-          rowsPerPage=${limit}
-          onPageChange=${({ page: p }) => setPage(p)}
-        />
-      <//>
+          <${AdminDataTable}
+            remote=${true}
+            title="Usage Details"
+            description=${() => `Individual cost entries for the last ${days()} days`}
+            data=${() => data()?.data || []}
+            columns=${columns}
+            totalItems=${() => data()?.meta?.total || 0}
+            page=${page}
+            rowsPerPage=${limit}
+            onPageChange=${({ page: p }) => setPage(p)}
+          />
+        <//>
+      </div>
     </div>
   `;
 }

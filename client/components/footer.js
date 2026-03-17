@@ -9,9 +9,9 @@ export default function Footer() {
       links: [
         {
           href: "mailto:ctribresearchoptimizer@mail.nih.gov",
-          content: "Contact Research Optimizer",
+          content: "Contact EAGLE",
         },
-        { href: "/about", content: "About Research Optimizer", internal: true },
+        { href: "/about", content: "About EAGLE", internal: true },
       ],
     },
     {

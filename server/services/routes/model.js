@@ -54,6 +54,10 @@ api.post("/model", requireRole(), async (req, res, next) => {
       userID: user.id,
       ip,
       ...req.body,
+      // Langfuse trace context — allows callers to group model calls
+      langfuseTraceId: req.body.langfuseTraceId,
+      langfuseSessionId: req.body.langfuseSessionId,
+      langfuseTurnLabel: req.body.langfuseTurnLabel,
     });
 
     // Handle rate limit error

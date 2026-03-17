@@ -21,6 +21,9 @@ const Costs = AuthorizedImport({ path: "./admin/costs.js", roles: [1] });
 const Skills = AuthorizedImport({ path: "./admin/skills.js", roles: [1] });
 const Templates = AuthorizedImport({ path: "./admin/templates.js", roles: [1] });
 const ApiLog = AuthorizedImport({ path: "./admin/api-log.js", roles: [1] });
+const Documents = AuthorizedImport({ path: "./admin/documents.js", roles: [1] });
+const AnalyticsPage = AuthorizedImport({ path: "./admin/analytics.js", roles: [1] });
+const KnowledgeBase = AuthorizedImport({ path: "./admin/knowledge.js", roles: [1] });
 
 /**
  * Generate site routes.
@@ -158,6 +161,24 @@ export default function getRoutes() {
           path: "admin/api-log",
           title: "API Log",
           component: ApiLog,
+          hidden: true,
+        },
+        {
+          path: "admin/documents",
+          title: "Documents",
+          component: Documents,
+          hidden: true,
+        },
+        {
+          path: "admin/analytics",
+          title: "Analytics",
+          component: AnalyticsPage,
+          hidden: true,
+        },
+        {
+          path: "admin/knowledge",
+          title: "Knowledge Base",
+          component: KnowledgeBase,
           hidden: true,
         },
         {

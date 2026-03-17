@@ -8,10 +8,16 @@ export default function Page() {
 
   const links = [
     {
-      title: "Chat",
-      description: "Develop with workspace and chat tools",
+      title: "Acquisition Chat",
+      description: "AI-guided intake, compliance, and document generation",
       href: "/tools/chat",
       icon: html`<img src="/assets/images/icon-agents.svg" height="60" alt="Chat Icon" />`,
+    },
+    {
+      title: "Packages",
+      description: "Track acquisition packages, documents, and checklists",
+      href: "/tools/workflows",
+      icon: html`<img src="/assets/images/icon-books.svg" height="60" alt="Packages Icon" />`,
     },
     {
       title: "ConsentCrafter",
@@ -25,13 +31,6 @@ export default function Page() {
       href: "/tools/translator",
       icon: html`<img src="/assets/images/icon-translate.svg" height="60" alt="Translator Icon" />`,
     },
-    {
-      title: "New Tools",
-      description: "Coming soon",
-      href: "/",
-      disabled: true,
-      icon: html`<img src="/assets/images/icon-books.svg" height="60" alt="New Tools Icon" />`,
-    },
   ];
 
   return html`
@@ -42,25 +41,24 @@ export default function Page() {
             <h1
               class="font-manrope display-2 fw-semibold lh-xs text-clip text-spacing--1 text-gradient-blue-teal pb-4"
             >
-              Research Optimizer
+              EAGLE
             </h1>
             <h2 class="font-inter fw-medium fs-2 lh-sm text-black mb-5">
-              AI Research & Translational Informatics
+              AI-Powered Acquisition Assistant
             </h2>
             <div class="font-inter lead">
               <div class="mb-4">
                 <p class="mb-3">
-                  Powering the Research Optimizer platform with intelligent tools that address
-                  documentation challenges throughout the clinical trial lifecycle. AI Research &
-                  Translational Informatics enables researchers to focus on scientific advancement
-                  rather than administrative burdens.
+                  Intelligent intake, compliance analysis, and document generation for the federal
+                  acquisition lifecycle. EAGLE guides contracting professionals from requirement
+                  identification through package submission.
                 </p>
                 <p class="mb-3">
-                  Developed by clinical research professionals for clinical research professionals.
+                  10 specialist skills, 5 document templates, deterministic FAR/DFARS/HHSAR
+                  compliance — powered by Claude Sonnet 4.6.
                 </p>
                 <p class="mb-3">
-                  An initiative of the National Cancer Institute – Center for Biomedical Informatics
-                  and Information Technology
+                  An initiative of the National Cancer Institute – Office of Acquisitions
                 </p>
               </div>
               <${Show} when=${() => !user()}>
