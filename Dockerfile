@@ -28,6 +28,7 @@ COPY agents /app/agents
 COPY users /app/users
 COPY server /app/server
 COPY client /app/client
+COPY eagle-plugin/data /app/eagle-plugin/data
 
 RUN touch /app/server/.env /app/gateway/.env /app/cms/.env /app/agents/.env /app/users/.env
 
