@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { json, Router } from "express";
 
 import { chatConfigs } from "../chat-config.js";
+import { cmsClient } from "../clients/cms.js";
 import { invoke, listModels } from "../clients/gateway.js";
 import { requireRole } from "../middleware.js";
 import {
@@ -46,6 +47,16 @@ api.post("/model", requireRole(), async (req, res, next) => {
       req.body.system = cfg.systemPrompt(req.body.context || {});
       delete req.body.context;
       delete req.body.chatConfig;
+    }
+
+    // Resolve messages from server-side conversation when conversationId is provided.
+    // This avoids sending the full message history in the POST body (WAF 8KB limit).
+    if (req.body.conversationId && !req.body.messages) {
+      const dbMessages = await cmsClient.getMessages(user.id, req.body.conversationId);
+      if (!dbMessages?.length) {
+        return res.status(400).json({ error: "No messages found for conversation" });
+      }
+      req.body.messages = dbMessages.map((m) => ({ role: m.role, content: m.content }));
     }
 
     // Log the request

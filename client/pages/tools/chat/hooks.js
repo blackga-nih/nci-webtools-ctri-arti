@@ -96,6 +96,7 @@ export function useChat() {
   const [loading, setLoading] = createSignal(false);
   const [userEmail, setUserEmail] = createSignal(null);
   const [db, setDB] = createSignal(null);
+  const [serverConversationId, setServerConversationId] = createSignal(null);
 
   // Initialize user session and database
   const initializeDatabase = async () => {
@@ -143,19 +144,41 @@ export function useChat() {
 
         // Load messages for this conversation
         const msgs = await database.getMessages(conversationId);
-        setMessages(
-          msgs.map((msg) => {
-            // Normalize content to array format
-            const content = normalizeMessageContent(msg.content);
+        const normalizedMsgs = msgs.map((msg) => {
+          const content = normalizeMessageContent(msg.content);
+          return {
+            role: msg.role,
+            content,
+            timestamp: msg.timestamp,
+            metadata: msg.metadata,
+          };
+        });
+        setMessages(normalizedMsgs);
 
-            return {
-              role: msg.role,
-              content,
-              timestamp: msg.timestamp,
-              metadata: msg.metadata,
-            };
-          })
-        );
+        // Create server-side conversation and sync existing messages (WAF bypass)
+        try {
+          const serverConv = await fetch("/api/v1/conversations", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ title: conv.title || "" }),
+          }).then((r) => r.json());
+          if (serverConv?.id) {
+            setServerConversationId(serverConv.id);
+            // Sync existing messages to server
+            const toSync = normalizedMsgs
+              .filter((m) => m.role === "user" || m.role === "assistant")
+              .map((m) => ({ role: m.role, content: m.content }));
+            if (toSync.length) {
+              await fetch(`/api/v1/conversations/${serverConv.id}/messages`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ messages: toSync }),
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to create server conversation for existing chat:", e);
+        }
       }
     } catch (error) {
       console.error("Failed to load conversation:", error);
@@ -333,6 +356,7 @@ export function useChat() {
       // Clear current conversation
       setConversation({ id: null, title: "", messages: [] });
       setMessages([]);
+      setServerConversationId(null);
 
       // Update URL to remove conversation ID
       const url = new URL(window.location);
@@ -352,6 +376,26 @@ export function useChat() {
       window.history.replaceState({}, "", url);
     }
   };
+
+  /**
+   * Sync messages to the server-side conversation for WAF bypass.
+   * When a server conversation exists, messages are stored server-side so the
+   * /model endpoint can fetch them by conversationId instead of receiving
+   * the full message history in the POST body (which can exceed the 8KB WAF limit).
+   */
+  async function syncToServer(messagesToSync) {
+    const serverId = serverConversationId();
+    if (!serverId) return;
+    try {
+      await fetch(`/api/v1/conversations/${serverId}/messages`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: messagesToSync }),
+      });
+    } catch (e) {
+      console.warn("Failed to sync messages to server:", e);
+    }
+  }
 
   /**
    * Submit a message along with optional files.
@@ -414,6 +458,18 @@ export function useChat() {
           title: newConversation.title,
           projectId: newConversation.projectId,
         });
+
+        // Create server-side conversation for message storage (WAF bypass)
+        try {
+          const serverConv = await fetch("/api/v1/conversations", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ title: "" }),
+          }).then((r) => r.json());
+          if (serverConv?.id) setServerConversationId(serverConv.id);
+        } catch (e) {
+          console.warn("Server conversation creation failed, using inline messages:", e);
+        }
 
         // Update URL with new conversation ID
         updateURL(newConversation.id);
@@ -484,6 +540,9 @@ export function useChat() {
       }
     }
 
+    // Sync user message to server-side conversation (WAF bypass)
+    await syncToServer([userMessage]);
+
     try {
       let isComplete = false;
       setLoading(true);
@@ -494,6 +553,9 @@ export function useChat() {
       const langfuseTurnLabel = message?.slice(0, 60) || undefined;
 
       while (!isComplete) {
+        // Use server-side conversationId when available to avoid WAF body size limits.
+        // Falls back to inline messages for callers without a server conversation.
+        const useServerMessages = !!serverConversationId();
         const response = await fetch("/api/v1/model", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -501,7 +563,7 @@ export function useChat() {
             model,
             chatConfig: "eagle",
             context: getClientContext(context),
-            messages,
+            ...(useServerMessages ? { conversationId: serverConversationId() } : { messages }),
             thoughtBudget: reasoningMode ? 8000 : 0,
             stream: true,
             langfuseSessionId,
@@ -708,7 +770,26 @@ export function useChat() {
                     handleError(wrappedError, "Store Tool Results Error");
                   }
                 }
+
+                // Sync assistant + tool results to server (WAF bypass).
+                // The next /model call will use conversationId to fetch these.
+                const assistantMsg = messages.at(-2); // assistant with tool_use
+                if (assistantMsg?.role === "assistant") {
+                  const serialized = JSON.parse(JSON.stringify(assistantMsg.content));
+                  await syncToServer([
+                    { role: "assistant", content: serialized },
+                    toolResultsMessage,
+                  ]);
+                } else {
+                  await syncToServer([toolResultsMessage]);
+                }
               } else {
+                // Sync final assistant message to server
+                const finalMsg = messages.at(-1);
+                if (finalMsg?.role === "assistant") {
+                  const serialized = JSON.parse(JSON.stringify(finalMsg.content));
+                  await syncToServer([{ role: "assistant", content: serialized }]);
+                }
                 isComplete = true;
               }
             }
