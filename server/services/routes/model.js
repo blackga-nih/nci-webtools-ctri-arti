@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 
 import { json, Router } from "express";
 
+import { runAgentLoop } from "../agent-loop.js";
 import { chatConfigs } from "../chat-config.js";
 import { cmsClient } from "../clients/cms.js";
 import { invoke, listModels } from "../clients/gateway.js";
@@ -18,6 +19,7 @@ import {
 import { createHttpError } from "../utils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const AGENT_LOOP_ENABLED = process.env.AGENT_LOOP_ENABLED !== "false"; // on by default
 const TRACE_DIR = join(__dirname, "..", "..", "..", "traces");
 const TRACE_ENABLED = process.env.TRACE_INFERENCE !== "false"; // on by default
 
@@ -57,6 +59,21 @@ api.post("/model", requireRole(), async (req, res, next) => {
         return res.status(400).json({ error: "No messages found for conversation" });
       }
       req.body.messages = dbMessages.map((m) => ({ role: m.role, content: m.content }));
+    }
+
+    // When agentLoop is requested, run the full tool loop server-side.
+    // Tool results stay on the server — never cross the WAF.
+    if (req.body.agentLoop && AGENT_LOOP_ENABLED) {
+      await writeTrace({
+        traceId,
+        type: "agent-loop-request",
+        timestamp: new Date().toISOString(),
+        userID: user.id,
+        model: req.body.model,
+        conversationId: req.body.conversationId,
+        messageCount: req.body.messages?.length,
+      });
+      return runAgentLoop({ req, res, body: req.body, user });
     }
 
     // Log the request

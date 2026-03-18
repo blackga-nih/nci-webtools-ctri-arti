@@ -586,6 +586,9 @@ export function useChat() {
       const langfuseSessionId = conversation.id || undefined;
       const langfuseTurnLabel = message?.slice(0, 60) || undefined;
 
+      // Agent loop mode — set when the server signals it's handling tools
+      let agentLoopActive = false;
+
       while (!isComplete) {
         // Use server-side conversationId when available to avoid WAF body size limits.
         // Falls back to inline messages for callers without a server conversation.
@@ -600,6 +603,7 @@ export function useChat() {
             ...(useServerMessages ? { conversationId: serverConversationId() } : { messages }),
             thoughtBudget: reasoningMode ? 8000 : 0,
             stream: true,
+            agentLoop: true, // Request server-side tool execution
             langfuseSessionId,
             langfuseTraceId,
             langfuseTurnLabel,
@@ -615,8 +619,7 @@ export function useChat() {
         let assistantMessage = { role: "assistant", content: [] };
         setMessages(messages.length, assistantMessage);
 
-        // CRITICAL FIX: Store assistant message immediately when created
-        // This ensures it's persisted even if tool calls or errors occur
+        // Store assistant message immediately when created
         let assistantMessageId = null;
         if (database && conversation.id) {
           try {
@@ -635,17 +638,30 @@ export function useChat() {
 
         // Process streaming chunks from the API
         for await (const chunk of readStream(response)) {
-          const values = decoder
+          const lines = decoder
             .decode(chunk, { stream: true })
             .trim()
             .split("\n")
-            .map((e) => JSON.parse(e));
+            .filter((line) => line.trim());
 
-          for (const value of values) {
+          for (const line of lines) {
+            let value;
+            try {
+              value = JSON.parse(line);
+            } catch {
+              continue; // Skip malformed lines
+            }
+
             const { contentBlockStart, contentBlockDelta, contentBlockStop, messageStop } = value;
             const toolUse = contentBlockStart?.start?.toolUse;
             const stopReason = messageStop?.stopReason;
 
+            // ── Agent loop signals ──────────────────────────────────
+            if (value.agentLoopStarted) {
+              agentLoopActive = true;
+            }
+
+            // ── Model content events (identical for both modes) ─────
             if (toolUse) {
               toolUse.input = "";
               const { contentBlockIndex } = contentBlockStart;
@@ -735,15 +751,15 @@ export function useChat() {
               }
             } else if (contentBlockStop) {
               const { contentBlockIndex } = contentBlockStop;
-              const { toolUse } = messages.at(-1).content[contentBlockIndex];
-              const parse = (input) => {
-                try {
-                  return JSON.parse(input);
-                } catch (e) {
-                  return { error: e.message, input };
-                }
-              };
-              if (toolUse)
+              const block = messages.at(-1).content[contentBlockIndex];
+              if (block?.toolUse) {
+                const parse = (input) => {
+                  try {
+                    return JSON.parse(input);
+                  } catch (e) {
+                    return { error: e.message, input };
+                  }
+                };
                 setMessages(
                   messages.length - 1,
                   "content",
@@ -752,13 +768,13 @@ export function useChat() {
                   "input",
                   (prev) => parse(prev)
                 );
+              }
             } else if (stopReason) {
               // Update the stored assistant message with final content
               if (database && conversation.id && assistantMessageId) {
                 try {
                   const currentAssistantMessage = messages.at(-1);
                   if (currentAssistantMessage && currentAssistantMessage.role === "assistant") {
-                    // CRITICAL FIX: Deep clone the content to remove any reactive references
                     const serializedContent = JSON.parse(
                       JSON.stringify(currentAssistantMessage.content)
                     );
@@ -777,66 +793,114 @@ export function useChat() {
               }
 
               if (stopReason === "tool_use") {
-                toolIterations++;
-                const toolUses = messages
-                  .at(-1)
-                  .content.filter((c) => c.toolUse)
-                  .map((c) => c.toolUse);
-                const toolResults = await Promise.all(toolUses.map((t) => runTool(t)));
+                if (!agentLoopActive) {
+                  // ── Legacy: execute tools client-side ──────────────
+                  toolIterations++;
+                  const toolUses = messages
+                    .at(-1)
+                    .content.filter((c) => c.toolUse)
+                    .map((c) => c.toolUse);
+                  const toolResults = await Promise.all(toolUses.map((t) => runTool(t)));
 
-                // If we've hit the iteration limit, force the model to respond
-                // by appending a stop instruction to the tool results
-                const resultContent = toolResults.map((r) => ({ toolResult: r }));
-                if (toolIterations >= MAX_TOOL_ITERATIONS) {
-                  resultContent.push({
-                    text: "[SYSTEM: Tool call limit reached. You MUST respond to the user now with the information you have gathered so far. Do NOT call any more tools.]",
-                  });
-                }
-
-                const toolResultsMessage = {
-                  role: "user",
-                  content: resultContent,
-                };
-                setMessages(messages.length, toolResultsMessage);
-
-                // CRITICAL FIX: Store tool results message immediately when created
-                if (database && conversation.id) {
-                  try {
-                    await database.addMessage(conversation.id, {
-                      role: toolResultsMessage.role,
-                      content: toolResultsMessage.content,
+                  const resultContent = toolResults.map((r) => ({ toolResult: r }));
+                  if (toolIterations >= MAX_TOOL_ITERATIONS) {
+                    resultContent.push({
+                      text: "[SYSTEM: Tool call limit reached. You MUST respond to the user now with the information you have gathered so far. Do NOT call any more tools.]",
                     });
-                  } catch (error) {
-                    console.error("Failed to store tool results message:", error);
-                    const wrappedError = new Error(
-                      "Something went wrong while storing tool results."
-                    );
-                    wrappedError.cause = error;
-                    handleError(wrappedError, "Store Tool Results Error");
+                  }
+
+                  const toolResultsMessage = { role: "user", content: resultContent };
+                  setMessages(messages.length, toolResultsMessage);
+
+                  if (database && conversation.id) {
+                    try {
+                      await database.addMessage(conversation.id, {
+                        role: toolResultsMessage.role,
+                        content: toolResultsMessage.content,
+                      });
+                    } catch (error) {
+                      console.error("Failed to store tool results message:", error);
+                    }
+                  }
+
+                  const assistantMsg = messages.at(-2);
+                  if (assistantMsg?.role === "assistant") {
+                    const serialized = JSON.parse(JSON.stringify(assistantMsg.content));
+                    await syncToServer([
+                      { role: "assistant", content: serialized },
+                      toolResultsMessage,
+                    ]);
+                  } else {
+                    await syncToServer([toolResultsMessage]);
                   }
                 }
-
-                // Sync assistant + tool results to server (WAF bypass).
-                // The next /model call will use conversationId to fetch these.
-                const assistantMsg = messages.at(-2); // assistant with tool_use
-                if (assistantMsg?.role === "assistant") {
-                  const serialized = JSON.parse(JSON.stringify(assistantMsg.content));
-                  await syncToServer([
-                    { role: "assistant", content: serialized },
-                    toolResultsMessage,
-                  ]);
-                } else {
-                  await syncToServer([toolResultsMessage]);
-                }
+                // Agent loop: server handles tools — loopCycle event follows.
               } else {
-                // Sync final assistant message to server
-                const finalMsg = messages.at(-1);
-                if (finalMsg?.role === "assistant") {
-                  const serialized = JSON.parse(JSON.stringify(finalMsg.content));
-                  await syncToServer([{ role: "assistant", content: serialized }]);
+                if (!agentLoopActive) {
+                  // Legacy: sync final assistant message to server
+                  const finalMsg = messages.at(-1);
+                  if (finalMsg?.role === "assistant") {
+                    const serialized = JSON.parse(JSON.stringify(finalMsg.content));
+                    await syncToServer([{ role: "assistant", content: serialized }]);
+                  }
                 }
                 isComplete = true;
               }
+            }
+
+            // ── Agent loop: tool execution events ───────────────────
+            if (value.loopCycle) {
+              // Create tool results placeholder for UI display
+              const toolResultsMsg = {
+                role: "user",
+                content: value.loopCycle.toolResults.map((r) => ({
+                  toolResult: {
+                    toolUseId: r.toolUseId,
+                    content: [{ json: { results: r.summary || "completed" } }],
+                  },
+                })),
+              };
+              setMessages(messages.length, toolResultsMsg);
+
+              if (database && conversation.id) {
+                await database
+                  .addMessage(conversation.id, {
+                    role: toolResultsMsg.role,
+                    content: toolResultsMsg.content,
+                  })
+                  .catch(() => {});
+              }
+
+              // Create new assistant message for the next model iteration
+              assistantMessage = { role: "assistant", content: [] };
+              setMessages(messages.length, assistantMessage);
+              assistantMessageId = null;
+              if (database && conversation.id) {
+                const stored = await database
+                  .addMessage(conversation.id, { role: "assistant", content: [] })
+                  .catch(() => null);
+                assistantMessageId = stored?.id;
+              }
+            }
+
+            if (value.agentComplete) {
+              // Save final assistant message to local DB
+              if (database && conversation.id && assistantMessageId) {
+                const currentMsg = messages.at(-1);
+                if (currentMsg?.role === "assistant") {
+                  const serialized = JSON.parse(JSON.stringify(currentMsg.content));
+                  await database
+                    .updateMessage(assistantMessageId, { content: serialized })
+                    .catch(() => {});
+                }
+              }
+              isComplete = true;
+            }
+
+            if (value.error && !stopReason) {
+              console.error("Server error:", value.error);
+              showError(value.error);
+              isComplete = true;
             }
           }
         }
