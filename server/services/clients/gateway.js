@@ -12,7 +12,7 @@ import db, { Model, User } from "database";
 
 import { eq, and } from "drizzle-orm";
 import { runModel as directRunModel } from "gateway/inference.js";
-import { startTrace, endGeneration, flushLangfuse } from "gateway/langfuse.js";
+import { startTrace, endGeneration, addToolSpan, flushLangfuse } from "gateway/langfuse.js";
 import { trackModelUsage } from "gateway/usage.js";
 
 const GATEWAY_URL = process.env.GATEWAY_URL;
@@ -48,7 +48,9 @@ function buildDirectClient() {
       const limited = await checkRateLimit(userID);
       if (limited) return limited;
 
-      // Start Langfuse trace (or add generation to existing trace via traceId)
+      // Start hierarchical Langfuse trace:
+      // Trace → AGENT span → SPAN (cycle) → GENERATION
+      const toolNames = tools?.map((t) => t.toolSpec?.name || t.name) || [];
       const lf = startTrace({
         model,
         userID: userID ? String(userID) : undefined,
@@ -56,7 +58,7 @@ function buildDirectClient() {
         traceId: langfuseTraceId,
         turnLabel: langfuseTurnLabel,
         input: messages,
-        metadata: { stream, thoughtBudget, toolCount: tools?.length || 0 },
+        metadata: { stream, thoughtBudget, toolCount: toolNames.length, toolNames },
       });
 
       let result;
@@ -71,48 +73,96 @@ function buildDirectClient() {
           outputConfig,
         });
       } catch (error) {
-        // Record error in Langfuse
+        // Record error in Langfuse — end generation + cycle + agent spans
         endGeneration(lf?.generation, {
           trace: lf?.trace,
+          agentSpan: lf?.agentSpan,
+          cycleSpan: lf?.cycleSpan,
+          traceId: lf?.traceId,
           level: "ERROR",
           statusMessage: error.message,
+          stopReason: "error",
         });
         throw error;
       }
 
-      // For non-streaming responses, track usage + end Langfuse trace
+      // For non-streaming responses, track usage + end Langfuse hierarchy
       if (!result?.stream && userID) {
         await trackModelUsage(userID, model, ip, result.usage);
         endGeneration(lf?.generation, {
           trace: lf?.trace,
+          agentSpan: lf?.agentSpan,
+          cycleSpan: lf?.cycleSpan,
+          traceId: lf?.traceId,
           output: result.output?.message?.content,
           usage: result.usage,
           stopReason: result.stopReason,
         });
       }
 
-      // For streaming, wrap to track usage on metadata and end Langfuse trace
+      // For streaming, wrap to track usage, detect tools, and end Langfuse hierarchy
       if (result?.stream) {
         return {
           stream: (async function* () {
             let lastUsage = null;
             let lastStopReason = null;
-            for await (const message of result.stream) {
-              if (message.metadata && userID) {
-                await trackModelUsage(userID, model, ip, message.metadata.usage);
-                lastUsage = message.metadata.usage;
+            let currentToolSpan = null;
+            let outputText = "";
+
+            try {
+              for await (const message of result.stream) {
+                if (message.metadata && userID) {
+                  await trackModelUsage(userID, model, ip, message.metadata.usage);
+                  lastUsage = message.metadata.usage;
+                }
+                if (message.messageStop?.stopReason) {
+                  lastStopReason = message.messageStop.stopReason;
+                }
+
+                // Detect tool calls → create TOOL observations under cycle span
+                if (message.contentBlockStart?.start?.toolUse && lf?.cycleSpan) {
+                  currentToolSpan = addToolSpan(lf.cycleSpan, {
+                    name: message.contentBlockStart.start.toolUse.name,
+                  });
+                }
+                if (message.contentBlockStop && currentToolSpan) {
+                  currentToolSpan.end();
+                  currentToolSpan = null;
+                }
+
+                // Accumulate text output for trace
+                if (message.contentBlockDelta?.delta?.text) {
+                  outputText += message.contentBlockDelta.delta.text;
+                }
+
+                yield message;
               }
-              if (message.messageStop?.stopReason) {
-                lastStopReason = message.messageStop.stopReason;
-              }
-              yield message;
+
+              // End Langfuse hierarchy after stream completes
+              endGeneration(lf?.generation, {
+                trace: lf?.trace,
+                agentSpan: lf?.agentSpan,
+                cycleSpan: lf?.cycleSpan,
+                traceId: lf?.traceId,
+                usage: lastUsage,
+                stopReason: lastStopReason,
+                output: outputText || undefined,
+              });
+            } catch (streamError) {
+              // Stream broke mid-flight (network disconnect, reconnect, etc.)
+              endGeneration(lf?.generation, {
+                trace: lf?.trace,
+                agentSpan: lf?.agentSpan,
+                cycleSpan: lf?.cycleSpan,
+                traceId: lf?.traceId,
+                level: "ERROR",
+                statusMessage: streamError.message,
+                stopReason: "stream_error",
+                usage: lastUsage,
+                output: outputText || undefined,
+              });
+              throw streamError;
             }
-            // End Langfuse generation after stream completes
-            endGeneration(lf?.generation, {
-              trace: lf?.trace,
-              usage: lastUsage,
-              stopReason: lastStopReason,
-            });
           })(),
         };
       }

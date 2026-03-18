@@ -46,9 +46,9 @@ Collect only essential information to start. Ask these conversationally, not as 
 ### Cost Range Options
 
 ```
-○ Under $10,000 (Micro-purchase)
-○ $10,000 - $250,000 (Simplified Acquisition)
-○ Over $250,000 (Negotiated Acquisition)
+○ Under $15,000 (Micro-purchase)
+○ $15,000 - $350,000 (Simplified Acquisition)
+○ Over $350,000 (Negotiated Acquisition)
 ○ I don't know yet
 ```
 
@@ -57,7 +57,7 @@ Collect only essential information to start. Ask these conversationally, not as 
 > "Hi! I'm here to help you with your acquisition request. Let's start with the basics:
 >
 > 1. **What do you need?** (Describe the product, service, or equipment)
-> 2. **What's the estimated cost?** (Under $10K, $10K-$250K, Over $250K, or unsure)
+> 2. **What's the estimated cost?** (Under $15K, $15K-$350K, Over $350K, or unsure)
 > 3. **When do you need it?**"
 
 ---
@@ -192,14 +192,14 @@ Q: "What type of funds?"
 ### Decision Tree: Acquisition Type
 
 ```
-COST < $10,000?
+COST < $15,000?
 ├── YES → MICRO-PURCHASE
 │         • Minimal documentation
 │         • Government purchase card preferred
 │         • Single quote acceptable
 │         • No competition required
 │
-└── NO → COST $10,000 - $250,000?
+└── NO → COST $15,000 - $350,000?
          ├── YES → SIMPLIFIED ACQUISITION (FAR Part 13)
          │         ├── Commercial item? → FAR Part 12 + Part 13
          │         └── Non-commercial? → Standard Part 13
@@ -251,7 +251,7 @@ Are there multiple capable sources?
 
 ### Set-Aside Analysis
 
-For acquisitions over SAT ($250K):
+For acquisitions over SAT ($350K):
 
 ```
 Suitable for small business?
@@ -275,13 +275,13 @@ Suitable for small business?
 
 ### By Acquisition Type
 
-| Document                | Micro (<$10K) | Simplified ($10K-$250K) | Negotiated (>$250K) |
+| Document                | Micro (<$15K) | Simplified ($15K-$350K) | Negotiated (>$350K) |
 | ----------------------- | :-----------: | :---------------------: | :-----------------: |
 | Purchase Request        |       ✓       |            ✓            |          ✓          |
 | Statement of Work (SOW) |       -       |            ✓            |          ✓          |
 | IGCE                    |       -       |            ✓            |          ✓          |
 | Market Research         |       -       |            ✓            |          ✓          |
-| Acquisition Plan        |       -       |        If > $7M         |          ✓          |
+| Acquisition Plan        |       -       |            -            |          ✓          |
 | Sources Sought          |       -       |        Optional         |          ✓          |
 | J&A (if sole source)    |       -       |        If needed        |      If needed      |
 | D&F                     |       -       |            -            |          ✓          |
@@ -348,15 +348,15 @@ Would you like me to help generate any of these documents?
 
 | Threshold                          | Amount     | Significance                         |
 | ---------------------------------- | ---------- | ------------------------------------ |
-| **Micro-Purchase (MPT)**           | $10,000    | Minimal documentation, purchase card |
+| **Micro-Purchase (MPT)**           | $15,000    | Minimal documentation, purchase card |
 | **Davis-Bacon (services)**         | $2,000     | Wage requirements for construction   |
 | **Service Contract Act**           | $2,500     | Wage requirements for services       |
 | **Publicize Requirement**          | $25,000    | Synopsis on SAM.gov required         |
-| **Simplified (SAT)**               | $250,000   | Full competition required above      |
+| **Simplified (SAT)**               | $350,000   | Full competition required above      |
 | **Sole Source 8(a) Services**      | $4,500,000 | Competition required above           |
 | **Sole Source 8(a) Manufacturing** | $7,000,000 | Competition required above           |
-| **Cost/Pricing Data (TINA)**       | $2,000,000 | Certified data required              |
-| **Written Acquisition Plan**       | $7,000,000 | FAR 7.105 requirements               |
+| **Cost/Pricing Data (TINA)**       | $2,500,000 | Certified data required              |
+| **Written Acquisition Plan**       | $350,000   | Required above SAT (FAR 7.105)       |
 
 ---
 

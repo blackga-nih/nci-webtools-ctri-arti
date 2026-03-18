@@ -78,9 +78,9 @@ Verify small business set-aside requirements and opportunities.
 
 | Threshold          | Procedure                                                        |
 | ------------------ | ---------------------------------------------------------------- |
-| ≤ $10,000          | Order from one source                                            |
-| $10,001 - $250,000 | Seek quotes from 3+ schedule contractors                         |
-| > $250,000         | Seek quotes from reasonable number; consider ordering procedures |
+| ≤ $15,000          | Order from one source                                            |
+| $15,001 - $350,000 | Seek quotes from 3+ schedule contractors                         |
+| > $350,000         | Seek quotes from reasonable number; consider ordering procedures |
 
 **Pros:**
 
@@ -159,9 +159,9 @@ Verify small business set-aside requirements and opportunities.
 
 ### Small Business Set-Aside Analysis
 
-**Required for:** All acquisitions above micro-purchase threshold ($10,000)
+**Required for:** All acquisitions above micro-purchase threshold ($15,000)
 
-**Automatic Set-Aside:** Acquisitions between $10,000 and SAT ($250,000) if:
+**Automatic Set-Aside:** Acquisitions between $15,000 and SAT ($350,000) if:
 
 - Reasonable expectation of 2+ responsible small business offers
 - Award will be at fair market price
@@ -259,7 +259,7 @@ Size standards vary by NAICS code. Common examples:
 
 - FAR 52.219-9 Small Business Subcontracting Plan (for large businesses)
 
-#### > $2,000,000
+#### > $2,500,000
 
 - FAR 52.215-10/11 Price Reduction for Defective Certified Cost Data
 - FAR 52.215-12/13 Subcontractor Certified Cost Data
@@ -320,7 +320,7 @@ Query the embedded FAR database (`data/far-database.json`) for:
 ### Pre-Solicitation
 
 - [ ] Market research documented (FAR 10)
-- [ ] Acquisition plan completed (if > $7M)
+- [ ] Acquisition plan completed (if > $350K)
 - [ ] Competition requirements met (FAR 6)
 - [ ] Small business set-aside analyzed (FAR 19)
 - [ ] Synopsis published (if > $25K)
@@ -376,7 +376,7 @@ When detailed search needed:
 Flag these conditions and escalate when detected during compliance analysis.
 
 1. Sole source determination without clear FAR 6.302 authority match
-2. Small business set-aside bypass in competitive acquisition >$250K
+2. Small business set-aside bypass in competitive acquisition >$350K
 3. Total small business program exclusion (no set-aside, no subcontracting plan)
 4. Section 508 waiver or exception request required
 5. Foreign contractor involvement requiring security review
