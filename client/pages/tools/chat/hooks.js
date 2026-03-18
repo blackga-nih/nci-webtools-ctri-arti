@@ -386,12 +386,44 @@ export function useChat() {
   async function syncToServer(messagesToSync) {
     const serverId = serverConversationId();
     if (!serverId) return;
+
+    // Truncate large tool results to fit within WAF 8KB body limit.
+    // Keep the first portion so the model knows what the tool returned.
+    const MAX_RESULT_CHARS = 1500;
+    const truncated = messagesToSync.map((msg) => {
+      if (msg.role !== "user" || !Array.isArray(msg.content)) return msg;
+      return {
+        ...msg,
+        content: msg.content.map((c) => {
+          if (!c.toolResult) return c;
+          const raw = JSON.stringify(c.toolResult.content);
+          if (raw.length <= MAX_RESULT_CHARS) return c;
+          // Truncate each content block, keeping the beginning for context
+          const trimmedContent = c.toolResult.content.map((block) => {
+            if (block.json) {
+              const s = JSON.stringify(block.json);
+              if (s.length <= MAX_RESULT_CHARS) return block;
+              return { text: s.substring(0, MAX_RESULT_CHARS) + "... [truncated]" };
+            }
+            if (block.text && block.text.length > MAX_RESULT_CHARS) {
+              return { text: block.text.substring(0, MAX_RESULT_CHARS) + "... [truncated]" };
+            }
+            return block;
+          });
+          return { toolResult: { ...c.toolResult, content: trimmedContent } };
+        }),
+      };
+    });
+
     try {
-      await fetch(`/api/v1/conversations/${serverId}/messages`, {
+      const response = await fetch(`/api/v1/conversations/${serverId}/messages`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: messagesToSync }),
+        body: JSON.stringify({ messages: truncated }),
       });
+      if (!response.ok) {
+        console.warn("Sync to server failed:", response.status);
+      }
     } catch (e) {
       console.warn("Failed to sync messages to server:", e);
     }
@@ -545,6 +577,8 @@ export function useChat() {
 
     try {
       let isComplete = false;
+      let toolIterations = 0;
+      const MAX_TOOL_ITERATIONS = 15; // prevent infinite tool loops
       setLoading(true);
 
       // Langfuse tracing: one traceId per user turn, sessionId = conversation
@@ -743,14 +777,25 @@ export function useChat() {
               }
 
               if (stopReason === "tool_use") {
+                toolIterations++;
                 const toolUses = messages
                   .at(-1)
                   .content.filter((c) => c.toolUse)
                   .map((c) => c.toolUse);
                 const toolResults = await Promise.all(toolUses.map((t) => runTool(t)));
+
+                // If we've hit the iteration limit, force the model to respond
+                // by appending a stop instruction to the tool results
+                const resultContent = toolResults.map((r) => ({ toolResult: r }));
+                if (toolIterations >= MAX_TOOL_ITERATIONS) {
+                  resultContent.push({
+                    text: "[SYSTEM: Tool call limit reached. You MUST respond to the user now with the information you have gathered so far. Do NOT call any more tools.]",
+                  });
+                }
+
                 const toolResultsMessage = {
                   role: "user",
-                  content: toolResults.map((r) => ({ toolResult: r })),
+                  content: resultContent,
                 };
                 setMessages(messages.length, toolResultsMessage);
 
