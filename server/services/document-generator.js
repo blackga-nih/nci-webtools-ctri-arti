@@ -11,7 +11,7 @@ import Handlebars from "handlebars";
 import { generateDocx } from "./docx-generator.js";
 import { addDocument, getNextVersion, getPackage } from "./packages.js";
 import { generatePdf } from "./pdf-generator.js";
-import { putFile, getPresignedUrl } from "./s3.js";
+import { putFile } from "./s3.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_PATH = process.env.EAGLE_PLUGIN_PATH || resolve(__dirname, "../../eagle-plugin");
@@ -115,12 +115,12 @@ export async function generateDocument({ packageId, docType, title, data }) {
     });
   }
 
-  // 6. Generate download URLs (PDF is primary, markdown and DOCX also available)
-  const [downloadUrl, markdownUrl, docxUrl] = await Promise.all([
-    getPresignedUrl(DOC_BUCKET, pdfKey),
-    getPresignedUrl(DOC_BUCKET, s3Key),
-    getPresignedUrl(DOC_BUCKET, docxKey),
-  ]);
+  // 6. Build proxy download URLs (avoids presigned URL truncation on ECS)
+  const proxyUrl = (key) =>
+    `/api/v1/documents/download?bucket=${encodeURIComponent(DOC_BUCKET)}&key=${encodeURIComponent(key)}`;
+  const downloadUrl = proxyUrl(pdfKey);
+  const markdownUrl = proxyUrl(s3Key);
+  const docxUrl = proxyUrl(docxKey);
 
   // 7. Fetch updated package checklist if applicable
   let checklist = null;

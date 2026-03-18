@@ -376,6 +376,8 @@ api.get("/packages/:id/export", requireRole(), async (req, res) => {
 // ── Package document endpoints ─────────────────────────────────
 
 const DOC_BUCKET = process.env.DOC_BUCKET || "rh-eagle-files";
+const proxyDownloadUrl = (key) =>
+  `/api/v1/documents/download?bucket=${encodeURIComponent(DOC_BUCKET)}&key=${encodeURIComponent(key)}`;
 
 api.post("/packages/:id/documents", requireRole(), async (req, res) => {
   try {
@@ -404,12 +406,10 @@ api.get("/packages/:id/documents", requireRole(), async (req, res) => {
     const pkg = await getPackage(req.params.id);
     if (!pkg) return res.status(404).json({ error: "Package not found" });
     const docs = await listDocuments(req.params.id);
-    const docsWithUrls = await Promise.all(
-      docs.map(async (d) => ({
-        ...d,
-        downloadUrl: d.s3Key ? await getPresignedUrl(DOC_BUCKET, d.s3Key, 900) : null,
-      }))
-    );
+    const docsWithUrls = docs.map((d) => ({
+      ...d,
+      downloadUrl: d.s3Key ? proxyDownloadUrl(d.s3Key) : null,
+    }));
     res.json(docsWithUrls);
   } catch (err) {
     console.error("Package documents list error:", err);
@@ -421,7 +421,7 @@ api.get("/packages/:id/documents/:docType", requireRole(), async (req, res) => {
   try {
     const doc = await getDocument(req.params.id, req.params.docType);
     if (!doc) return res.status(404).json({ error: "Document not found" });
-    const downloadUrl = doc.s3Key ? await getPresignedUrl(DOC_BUCKET, doc.s3Key, 900) : null;
+    const downloadUrl = doc.s3Key ? proxyDownloadUrl(doc.s3Key) : null;
     res.json({ ...doc, downloadUrl });
   } catch (err) {
     console.error("Package document get error:", err);
@@ -432,12 +432,10 @@ api.get("/packages/:id/documents/:docType", requireRole(), async (req, res) => {
 api.get("/packages/:id/documents/:docType/history", requireRole(), async (req, res) => {
   try {
     const docs = await getDocumentHistory(req.params.id, req.params.docType);
-    const docsWithUrls = await Promise.all(
-      docs.map(async (d) => ({
-        ...d,
-        downloadUrl: d.s3Key ? await getPresignedUrl(DOC_BUCKET, d.s3Key, 900) : null,
-      }))
-    );
+    const docsWithUrls = docs.map((d) => ({
+      ...d,
+      downloadUrl: d.s3Key ? proxyDownloadUrl(d.s3Key) : null,
+    }));
     res.json(docsWithUrls);
   } catch (err) {
     console.error("Document history error:", err);
@@ -520,7 +518,7 @@ api.post("/documents/save", requireRole(), async (req, res) => {
   }
   try {
     const result = await putFile(bucket, key, content, contentType || "text/markdown");
-    const url = await getPresignedUrl(bucket, key);
+    const url = `/api/v1/documents/download?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(key)}`;
     res.json({ ...result, url });
   } catch (err) {
     console.error("Document save error:", err);
@@ -542,6 +540,31 @@ api.get("/documents/download-url", requireRole(), async (req, res) => {
   } catch (err) {
     console.error("Presigned URL error:", err);
     res.status(500).json({ error: "Failed to generate download URL" });
+  }
+});
+
+// Proxy S3 downloads through the server — avoids presigned URL truncation
+// when ECS task role STS tokens make URLs too long.
+api.get("/documents/download", requireRole(), async (req, res) => {
+  const { bucket, key } = req.query;
+  if (!bucket || !S3_BUCKETS?.split(",").includes(bucket)) {
+    return res.status(400).json({ error: "Invalid bucket" });
+  }
+  if (!key) {
+    return res.status(400).json({ error: "key is required" });
+  }
+  try {
+    const data = await getFile(bucket, key);
+    const filename = key.split("/").pop();
+    const contentType = data.ContentType || "application/octet-stream";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    if (data.ContentLength) res.setHeader("Content-Length", data.ContentLength);
+    data.Body.pipe(res);
+  } catch (err) {
+    console.error("Document download error:", err);
+    if (err.name === "NoSuchKey") return res.status(404).json({ error: "File not found" });
+    res.status(500).json({ error: "Failed to download document" });
   }
 });
 
